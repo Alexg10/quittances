@@ -74,6 +74,8 @@ La règle « pas plus de deux graisses par écran » de `DESIGN.md` est interpr�
 | Token | Taille | Interligne | Interlettrage | Famille et graisse |
 | --- | --- | --- | --- | --- |
 | `display` | 72px | 1.1 | -0.04em | display 700 |
+| `display-md` | 56px | 1.1 | -0.04em | display 700 |
+| `display-sm` | 40px | 1.1 | -0.04em | display 700 |
 | `headline` | 60px | 1.1 | -0.04em | display 700 |
 | `title` | 32px | 1.25 | -0.03em | display 700 |
 | `subtitle` | 24px | 1.25 | -0.03em | display 700 |
@@ -81,6 +83,8 @@ La règle « pas plus de deux graisses par écran » de `DESIGN.md` est interpr�
 | `small` | 13px | 1.6 | normal | body 400 |
 | `caption` | 12px | 1.6 | normal | body 400 |
 | `overline` | 11px | 1.6 | 0.08em, capitales | body 500 |
+
+`display-md` et `display-sm` ne figurent pas dans `DESIGN.md` : ils ont été ajoutés en T2 pour le `h1` de la page d'accueil en tablette et en mobile (R31).
 
 **R7 — Ombres.** Trois tokens : `card-hover` = `0 8px 30px rgba(0,0,0,0.08)` ; `primary-glow` = `0 4px 12px rgba(79,70,229,0.35)` ; `focus` = `0 0 0 3px rgba(79,70,229,0.12)`. Les deux dernières sont teintées de la couleur `primary` retenue en R4. Aucun élément statique ne porte d'ombre.
 
@@ -138,14 +142,14 @@ La règle « pas plus de deux graisses par écran » de `DESIGN.md` est interpr�
 
 | Élément | Moins de 768px | 768 à 1023px | 1024px et plus |
 | --- | --- | --- | --- |
-| Titre `h1` | 40px | 56px | 72px (`display`) |
+| Titre `h1` | 40px (`display-sm`) | 56px (`display-md`) | 72px (`display`) |
 | Titres `h2` | 24px (`subtitle`) | 32px (`title`) | 32px (`title`) |
 | Étapes | 1 colonne | 3 colonnes | 3 colonnes |
 | Cartes | 1 colonne | 2 colonnes | 2 colonnes |
 | Navigation de l'en-tête | absente | présente | présente |
 | Espacement entre sections | 32px | 48px | 64px |
 
-Gouttière des grilles : 24px. Les titres `h3` sont en 15px display 700. Le texte du bloc d'accroche est aligné à gauche et sa largeur de ligne ne dépasse pas 640px. Aucun défilement horizontal, de 320px à 1920px de large.
+Gouttière des grilles : 24px. Les titres `h3` sont en 15px display 700. Le texte du bloc d'accroche est aligné à gauche. La largeur de ligne de l'accroche (le paragraphe) ne dépasse pas 640px. Le titre `h1` n'est pas soumis à cette limite : sa largeur ne dépasse pas 960px et ses lignes sont équilibrées (`text-wrap: balance`), de sorte qu'il tient sur deux lignes à 768px et au-delà (précision ajoutée après la recette de T2 : à 640px il occupait trois lignes à 72px et laissait la moitié droite de l'écran vide). Aucun défilement horizontal, de 320px à 1920px de large.
 
 ## Contenus
 
@@ -226,7 +230,7 @@ Niveau de vérification indicatif : [V] Vitest et React Testing Library sur le c
 - **CA2** [N] Étant donné la page `/`, quand elle est chargée, alors le titre du document est exactement `Quittances — quittances de loyer et relances par e-mail` et la balise meta `description` vaut exactement le texte de R2.
 - **CA3** [N] Étant donné la page `/`, quand elle est chargée, alors la police calculée de `body` commence par DM Sans, celle du `h1` par Plus Jakarta Sans, et la propriété `--font-mono` de l'élément racine désigne JetBrains Mono.
 - **CA4** [N] Étant donné la page `/`, quand elle est chargée en observant le réseau, alors aucune requête ne part vers `fonts.googleapis.com` ni `fonts.gstatic.com`.
-- **CA5** [N] Étant donné la page `/`, quand on lit les propriétés CSS personnalisées de l'élément racine, alors les onze `--color-*` de R4, les huit `--text-*` de R6 et les trois `--shadow-*` de R7 existent avec les valeurs indiquées (à l'écriture près : casse, espaces, `px` ou `rem` équivalent sur une base de 16px).
+- **CA5** [N] Étant donné la page `/`, quand on lit les propriétés CSS personnalisées de l'élément racine, alors les onze `--color-*` de R4, les dix `--text-*` de R6 et les trois `--shadow-*` de R7 existent avec les valeurs indiquées (à l'écriture près : casse, espaces, `px` ou `rem` équivalent sur une base de 16px).
 - **CA6** [N] Étant donné la page `/`, quand elle est chargée, alors le fond calculé de `body` est `rgb(250, 250, 250)`, sa couleur de texte `rgb(10, 10, 10)` et sa taille de police 15px.
 - **CA7** [N] Étant donné un navigateur réglé sur le thème sombre (`prefers-color-scheme: dark`), quand la page `/` est chargée, alors le fond et la couleur de texte de `body` sont les mêmes qu'en CA6.
 - **CA8** [C] Étant donné le dépôt, quand on cherche dans `src/` les couleurs en dur (hexadécimal, `rgb(`, `hsl(`, classes de palette Tailwind par défaut, variante `dark:`), alors on n'en trouve que dans l'unique fichier où les tokens sont définis, et aucune variante `dark:` ni règle `prefers-color-scheme` nulle part.

@@ -33,6 +33,13 @@
   --text-display: 72px;
   --text-display--line-height: 1.1;
   --text-display--letter-spacing: -0.04em;
+  /* Tailles intermédiaires du h1 d'accueil (R31) : hors échelle R6, ajoutées ici pour éviter les valeurs arbitraires. */
+  --text-display-sm: 40px;
+  --text-display-sm--line-height: 1.1;
+  --text-display-sm--letter-spacing: -0.04em;
+  --text-display-md: 56px;
+  --text-display-md--line-height: 1.1;
+  --text-display-md--letter-spacing: -0.04em;
   --text-headline: 60px;
   --text-headline--line-height: 1.1;
   --text-headline--letter-spacing: -0.04em;

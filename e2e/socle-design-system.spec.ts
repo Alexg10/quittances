@@ -118,6 +118,8 @@ test.describe("Socle du design system", () => {
 
     const tailles: Record<string, number> = {
       display: 72,
+      "display-md": 56,
+      "display-sm": 40,
       headline: 60,
       title: 32,
       subtitle: 24,
