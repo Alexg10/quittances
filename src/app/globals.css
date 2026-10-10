@@ -77,6 +77,18 @@
 
 /* Styles globaux (R13). Pas de thème sombre (R12). */
 @layer base {
+  /* Les ancres s'arrêtent sous l'en-tête fixe de 56px, avec 16px d'air (R25). */
+  html {
+    scroll-padding-top: calc(var(--spacing) * 18);
+  }
+
+  /* Focus clavier de tous les liens (R29) : contour plein + ombre focus. */
+  a:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    box-shadow: var(--shadow-focus);
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-text-primary);

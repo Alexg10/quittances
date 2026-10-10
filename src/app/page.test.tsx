@@ -254,6 +254,94 @@ describe("Page d'accueil", () => {
     cibles.forEach((cible) => expect(autorisees).toContain(cible));
   });
 
+  it("CA21 — présente les repères banner, main et contentinfo", () => {
+    render(<Home />);
+
+    expect(screen.getByRole("banner")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+  });
+
+  it("CA21 — la navigation « Navigation principale » contient Fonctionnement et Fonctionnalités", () => {
+    render(<Home />);
+
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+    const liens = within(nav).getAllByRole("link");
+
+    expect(
+      liens.map((l) => [l.textContent, l.getAttribute("href")]),
+    ).toEqual([
+      ["Fonctionnement", "#fonctionnement"],
+      ["Fonctionnalités", "#fonctionnalites"],
+    ]);
+  });
+
+  it("CA21 — le lien « Quittances, accueil » mène à /", () => {
+    render(<Home />);
+
+    const logo = screen.getByRole("link", { name: "Quittances, accueil" });
+
+    expect(logo).toHaveAttribute("href", "/");
+  });
+
+  it("R22 — un seul repère banner, un seul main, un seul contentinfo", () => {
+    render(<Home />);
+
+    expect(screen.getAllByRole("banner")).toHaveLength(1);
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(screen.getAllByRole("contentinfo")).toHaveLength(1);
+  });
+
+  it("R22 — le banner n'est pas à l'intérieur de main", () => {
+    render(<Home />);
+
+    const main = screen.getByRole("main");
+    const banner = screen.getByRole("banner");
+
+    expect(main.contains(banner)).toBe(false);
+  });
+
+  it("R23 — le lien « Aller au contenu » cible #contenu", () => {
+    render(<Home />);
+
+    const lien = screen.getByRole("link", { name: "Aller au contenu" });
+
+    expect(lien).toHaveAttribute("href", "#contenu");
+  });
+
+  it("R23 — l'élément d'identifiant contenu existe et c'est le repère main", () => {
+    const { container } = render(<Home />);
+
+    const cible = container.querySelector("#contenu");
+
+    expect(cible).not.toBeNull();
+    expect(cible).toBe(screen.getByRole("main"));
+  });
+
+  it("R23 — « Aller au contenu » est le premier lien du document", () => {
+    render(<Home />);
+
+    const premier = screen.getAllByRole("link")[0];
+
+    expect(premier).toHaveAccessibleName("Aller au contenu");
+  });
+
+  it("R19 / parcours étape 5 — l'ordre des liens est celui de la spécification, sans autre lien", () => {
+    render(<Home />);
+
+    const attendus = [
+      "Aller au contenu",
+      "Quittances, accueil",
+      "Fonctionnement",
+      "Fonctionnalités",
+      "Voir comment ça marche",
+    ];
+    const liens = screen.getAllByRole("link");
+
+    expect(liens).toHaveLength(attendus.length);
+    attendus.forEach((nom, i) => expect(liens[i]).toHaveAccessibleName(nom));
+  });
+
   it("CA22 — aucun niveau de titre n'est sauté dans l'ordre du document", () => {
     render(<Home />);
 

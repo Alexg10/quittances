@@ -1,8 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-// Page d'accueil (spec 01, T2) : CA23 (adresse et visibilité du titre), CA30 à CA34, CA36.
-// Les sélecteurs passent par le rôle et le nom pour rester valables quand T3 ajoutera
-// l'en-tête fixe et ses liens de navigation.
+// Page d'accueil (spec 01, T2) : CA30 à CA34, CA36 et la précision de R31 sur le h1.
+// CA23 (ancre et titre sous l'en-tête) est couvert en entier dans accueil-entete.spec.ts.
 
 const BOUTON = "Voir comment ça marche";
 
@@ -33,23 +32,6 @@ const colonnes = (page: Page, region: string) =>
     .evaluate((e) => getComputedStyle(e).gridTemplateColumns.split(" ").length);
 
 test.describe("Page d'accueil, contenu", () => {
-  test("CA23 : « Voir comment ça marche » amène le titre de la section dans la fenêtre", async ({
-    page,
-  }) => {
-    await ouvrir(page);
-    await page.getByRole("link", { name: BOUTON }).click();
-    await expect(page).toHaveURL(/#fonctionnement$/);
-    const titre = page.getByRole("heading", { level: 2, name: "Comment ça marche" });
-    // Tolérance de 1px : le défilement s'arrête parfois à une fraction de pixel.
-    await expect
-      .poll(async () => {
-        const b = (await titre.boundingBox())!;
-        const vh = page.viewportSize()!.height;
-        return b.y >= -1 && b.y + b.height <= vh;
-      })
-      .toBe(true);
-  });
-
   for (const largeur of [320, 412, 768, 1024, 1280]) {
     test(`CA30 : pas de défilement horizontal à ${largeur}px`, async ({ page }) => {
       await ouvrir(page, largeur);
@@ -82,6 +64,29 @@ test.describe("Page d'accueil, contenu", () => {
         return b.top - a.bottom;
       });
       expect(ecart).toBe(espace);
+    });
+  }
+
+  for (const largeur of [768, 1024, 1280]) {
+    test(`R31 : le h1 tient sur deux lignes à ${largeur}px, accroche limitée à 640px`, async ({
+      page,
+    }) => {
+      await ouvrir(page, largeur);
+      const m = await page.evaluate(() => {
+        const h1 = document.querySelector("h1")!;
+        const cs = getComputedStyle(h1);
+        const accroche = h1.nextElementSibling as HTMLElement;
+        return {
+          lignes: Math.round(h1.getBoundingClientRect().height / parseFloat(cs.lineHeight)),
+          largeur: h1.getBoundingClientRect().width,
+          equilibre: cs.textWrapStyle,
+          accroche: accroche.getBoundingClientRect().width,
+        };
+      });
+      expect(m.lignes).toBe(2);
+      expect(m.largeur).toBeLessThanOrEqual(960);
+      expect(m.equilibre).toBe("balance");
+      expect(m.accroche).toBeLessThanOrEqual(640);
     });
   }
 
@@ -165,6 +170,10 @@ test.describe("Page d'accueil, contenu", () => {
     await expect(
       page.getByRole("heading", { level: 2, name: "Comment ça marche" }),
     ).toBeInViewport();
+    // R25 : le titre n'est pas recouvert par l'en-tête fixe (même sans JavaScript).
+    const t = (await page.getByRole("heading", { level: 2, name: "Comment ça marche" }).boundingBox())!;
+    const e = (await page.getByRole("banner").boundingBox())!;
+    expect(t.y).toBeGreaterThanOrEqual(e.y + e.height);
     await context.close();
   });
 

@@ -114,7 +114,7 @@ La règle « pas plus de deux graisses par écran » de `DESIGN.md` est interpr�
 
 **R19 — Liens.** Tous les liens de la page sont internes : `/`, `#contenu`, `#fonctionnement`, `#fonctionnalites`. Aucun lien externe, aucun `mailto:`, aucun élément `button`, `form` ou champ de saisie.
 
-**R20 — Fonctionnement sans JavaScript.** La page n'a besoin d'aucun JavaScript côté navigateur : avec JavaScript désactivé, tout le contenu est lisible et les ancres fonctionnent.
+**R20 — Fonctionnement sans JavaScript.** La page n'a besoin d'aucun JavaScript côté navigateur : avec JavaScript désactivé, tout le contenu est lisible et les ancres fonctionnent. Seule exception au « tout serveur » : le logo (R24), qui est un petit Client Component ; sans JavaScript il reste un lien ordinaire vers `/`.
 
 **R21 — Rendu statique.** La page ne lit aucune donnée dépendante de la requête ni de l'horloge (pas d'année courante dans le pied de page) et est pré-rendue au build.
 
@@ -124,7 +124,7 @@ La règle « pas plus de deux graisses par écran » de `DESIGN.md` est interpr�
 
 **R23 — Lien d'évitement.** Le premier élément focalisable de la page est un lien « Aller au contenu » qui mène à `#contenu`. Il est invisible tant qu'il n'a pas le focus et visible quand il l'a.
 
-**R24 — En-tête.** Barre fixe en haut de la fenêtre, haute de 56px, fond `surface` translucide avec flou d'arrière-plan, filet bas de 1px `border`, pas d'ombre. À gauche, le logo texte « Quittances » (police display 700, couleur `text-primary`), lien vers `/` dont le nom accessible est « Quittances, accueil ». À droite, à partir de 768px seulement, la navigation avec deux liens : « Fonctionnement » (`#fonctionnement`) et « Fonctionnalités » (`#fonctionnalites`), en 14px graisse 500, couleur `text-primary`, fond léger au survol. En dessous de 768px, la navigation n'est pas rendue visible ni atteignable au clavier, et il n'y a pas de menu hamburger : la page est courte et l'appel à l'action joue ce rôle.
+**R24 — En-tête.** Barre fixe en haut de la fenêtre, haute de 56px, fond `surface` translucide avec flou d'arrière-plan, filet bas de 1px `border`, pas d'ombre. À gauche, le logo texte « Quittances » (police display 700, couleur `text-primary`), lien vers `/` dont le nom accessible est « Quittances, accueil ». Ce lien est un `Link` de `next/link`, jamais un `<a>` natif : la navigation interne ne recharge pas la page (décision de l'utilisateur après la recette de T3). Comme `Link` ne remonte pas de lui-même en haut de page quand la route visée est la route courante, le logo est isolé dans un Client Component minimal qui ramène le défilement à 0 au clic, sans animation. À droite, à partir de 768px seulement, la navigation avec deux liens : « Fonctionnement » (`#fonctionnement`) et « Fonctionnalités » (`#fonctionnalites`), en 14px graisse 500, couleur `text-primary`, fond léger au survol. En dessous de 768px, la navigation n'est pas rendue visible ni atteignable au clavier, et il n'y a pas de menu hamburger : la page est courte et l'appel à l'action joue ce rôle.
 
 **R25 — Ancres et en-tête fixe.** Après activation d'une ancre, le titre de la section visée est visible dans la fenêtre, sous l'en-tête et non recouvert par lui. Le contenu du haut de page n'est jamais masqué par l'en-tête. Aucun défilement animé n'est demandé.
 
@@ -210,7 +210,7 @@ Un seul écran, `/`, accessible sans compte.
 1. **Arrivée.** Le visiteur voit l'en-tête, puis le bloc d'accroche : surtitre, titre, accroche, bouton « Voir comment ça marche ». Sur mobile, le bouton est visible sans que l'en-tête ne recouvre le titre.
 2. **Clic sur « Voir comment ça marche »** (ou sur « Fonctionnement » dans l'en-tête, à partir de 768px). La fenêtre se place sur la section « Comment ça marche », titre visible sous l'en-tête. L'adresse se termine par `#fonctionnement`. Le bouton Précédent du navigateur ramène en haut de page.
 3. **Lecture.** En défilant, il lit les trois étapes, puis les quatre cartes, puis la section « Les inscriptions ouvrent bientôt », puis le pied de page. L'en-tête reste fixé en haut.
-4. **Clic sur le logo.** Retour à `/`, en haut de page.
+4. **Clic sur le logo.** Retour à `/`, en haut de page, **sans rechargement complet de la page** (navigation côté client), y compris quand on est déjà sur `/` et qu'on a défilé.
 5. **Au clavier.** Tabulation depuis le haut : « Aller au contenu » apparaît, puis le logo, puis (à partir de 768px) « Fonctionnement » et « Fonctionnalités », puis « Voir comment ça marche ». Chaque arrêt a un focus visible. Il n'y a pas d'autre élément focalisable.
 
 États :

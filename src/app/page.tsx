@@ -1,5 +1,7 @@
 // Page d'accueil publique : Server Component statique, sans JavaScript côté navigateur.
-// L'en-tête et le lien d'évitement sont ajoutés en T3.
+// Le lien d'évitement et l'en-tête appartiennent à cette page, pas au layout racine (R13).
+
+import { LogoLink } from "./logo-link";
 
 const steps = [
   {
@@ -41,9 +43,45 @@ const h2Classes =
 export default function Home() {
   return (
     <>
+      {/* Premier élément focalisable : de taille nulle tant qu'il n'a pas le focus. */}
+      <a
+        href="#contenu"
+        className="fixed left-6 top-2 z-50 h-0 w-0 overflow-hidden focus:h-auto focus:w-auto focus:rounded-md focus:border focus:border-border focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
+      >
+        Aller au contenu
+      </a>
+
+      {/* header hors de main et de toute section : il reste un repère banner (R22). */}
+      <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-border bg-surface/80 backdrop-blur">
+        <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
+          <LogoLink />
+          {/* Dans le DOM à toutes les largeurs ; display:none sous 768px la retire de l'affichage et de la tabulation. */}
+          <nav aria-label="Navigation principale" className="hidden md:block">
+            <ul className="flex items-center gap-2">
+              <li>
+                <a
+                  href="#fonctionnement"
+                  className="rounded-md px-3 py-2 text-sm font-medium hover:bg-border"
+                >
+                  Fonctionnement
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#fonctionnalites"
+                  className="rounded-md px-3 py-2 text-sm font-medium hover:bg-border"
+                >
+                  Fonctionnalités
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </header>
+
       <main
         id="contenu"
-        className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-8 md:gap-12 md:py-12 lg:gap-16 lg:py-16"
+        className="mx-auto flex max-w-7xl flex-col gap-8 px-6 pb-8 pt-22 md:gap-12 md:pb-12 md:pt-26 lg:gap-16 lg:pb-16 lg:pt-30"
       >
         <section className="flex flex-col items-start gap-6">
           <p className="text-overline font-medium uppercase text-text-secondary">
@@ -59,7 +97,7 @@ export default function Home() {
           </p>
           <a
             href="#fonctionnement"
-            className="inline-flex h-11 items-center rounded-md bg-primary px-6 text-body font-medium text-surface transition duration-200 hover:bg-primary-hover hover:shadow-primary-glow motion-safe:hover:-translate-y-px motion-reduce:duration-0"
+            className="inline-flex h-11 items-center rounded-md bg-primary px-6 text-body font-medium text-surface transition-[background-color,translate] duration-200 hover:bg-primary-hover hover:shadow-primary-glow motion-safe:hover:-translate-y-px motion-reduce:duration-0"
           >
             Voir comment ça marche
           </a>
