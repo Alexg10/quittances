@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Seul fichier de src/ qui définit des valeurs de couleur (R11).
+ * `static` force Tailwind à émettre TOUTES les variables, même celles
+ * qu'aucune classe n'utilise encore (R10).
+ */
+@theme static {
+  /* On retire les palettes, rayons et ombres par défaut : seules celles de DESIGN.md existent. */
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+
+  /* Couleurs (R4) */
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-neutral: #9c9c9c;
+  --color-background: #fafafa;
+  --color-surface: #ffffff;
+  --color-text-primary: #0a0a0a;
+  --color-text-secondary: #6b6b6b;
+  --color-border: #e8e8ec;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+
+  /* Polices (R3) : les variables --font-*-face sont posées par next/font dans le layout. */
+  --font-display: var(--font-display-face);
+  --font-body: var(--font-body-face);
+  --font-mono: var(--font-mono-face);
+
+  /* Échelle typographique (R6) */
+  --text-display: 72px;
+  --text-display--line-height: 1.1;
+  --text-display--letter-spacing: -0.04em;
+  --text-headline: 60px;
+  --text-headline--line-height: 1.1;
+  --text-headline--letter-spacing: -0.04em;
+  --text-title: 32px;
+  --text-title--line-height: 1.25;
+  --text-title--letter-spacing: -0.03em;
+  --text-subtitle: 24px;
+  --text-subtitle--line-height: 1.25;
+  --text-subtitle--letter-spacing: -0.03em;
+  --text-body: 15px;
+  --text-body--line-height: 1.6;
+  --text-small: 13px;
+  --text-small--line-height: 1.6;
+  --text-caption: 12px;
+  --text-caption--line-height: 1.6;
+  --text-overline: 11px;
+  --text-overline--line-height: 1.6;
+  --text-overline--letter-spacing: 0.08em;
+
+  /* Ombres (R7) */
+  --shadow-card-hover: 0 8px 30px rgba(0, 0, 0, 0.08);
+  --shadow-primary-glow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  --shadow-focus: 0 0 0 3px rgba(79, 70, 229, 0.12);
+
+  /* Rayons (R8) */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  /* Espacement : unité de 4px (0.25rem, valeur par défaut de Tailwind) */
+  --spacing: 4px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Styles globaux (R13). Pas de thème sombre (R12). */
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: 1.6;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }

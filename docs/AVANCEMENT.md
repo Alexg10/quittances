@@ -16,17 +16,21 @@ Dernière mise à jour : 2026-10-10
 6. Vitest + React Testing Library installés et vérifiés (`pnpm test`). Agent `createur-de-tests` créé (modèle sonnet), pas encore testé. Fiche 03.
 7. Playwright (Chromium, projets bureau et mobile) et axe installés et vérifiés (`pnpm test:e2e`). Agent `qa` créé (modèle sonnet), pas encore testé. Fiche 04.
 
-Rien n'est encore commité en dehors du commit initial de `create-next-app`.
+8. Premier commit des agents, des tests et du design system (`fa56735`).
+9. Première fonctionnalité : spécification `docs/specs/01-accueil-et-design-system.md` rédigée par `chef-de-projet` et validée (3 tâches, 36 critères). `DESIGN.md` aligné : primaire `#4F46E5` (contraste), deux graisses par famille de police.
+10. T1 (socle du design system) développée par `developpeur-front` : polices `next/font`, tokens dans `@theme static`, layout racine `fr`, page `/` provisoire. Lint et build verts, `○ /`. Fiche 05.
+11. T1 recettée par `qa` : CA1 à CA10 conformes, aucun bug. Tests e2e durables du socle dans `e2e/socle-design-system.spec.ts` (7 tests, verts sur `bureau` et `mobile`, vérifiés en cassant deux tokens). Pas encore commitée.
 
 ### Prochaine étape
 
-Les quatre agents existent mais aucun n'a encore été appelé. Choisir la **première fonctionnalité** et la confier au `chef-de-projet` pour tester la chaîne. Suggestion : page d'accueil publique + mise en place du design system (polices, tokens Tailwind), sans base de données ni authentification, pour valider la chaîne sur quelque chose de simple.
+T2 (contenu principal de la page d'accueil) : `developpeur-front`, puis `createur-de-tests` (premier appel : CA11 à CA20 et CA22 sont vérifiables avec Vitest), puis `qa`. Avant T2, décider si on commite T1.
 
 ### Ensuite
 
-- Dérouler la chaîne spec → dev → tests → QA, puis ajuster les prompts des agents selon ce qu'on observe.
-- Faire un premier commit (rien n'est commité depuis `create-next-app`).
-- Choix techniques à expliquer et décider le moment venu : base de données, authentification, génération de PDF, envoi d'e-mails, tâches planifiées, outils de test.
+- T3 (en-tête, lien d'évitement, recette complète et e2e durables).
+- Ajuster les prompts des agents selon ce qu'on observe (déjà fait : `createur-de-tests` savait Playwright « pas installé »).
+- Commit de la fonctionnalité une fois recettée.
+- Choix techniques à expliquer et décider le moment venu : base de données, authentification, génération de PDF, envoi d'e-mails, tâches planifiées.
 
 ## Décisions prises
 
@@ -35,6 +39,8 @@ Les quatre agents existent mais aucun n'a encore été appelé. Choisir la **pre
 - WhatsApp, paiement en ligne et connexion bancaire sont reportés.
 - Les agents communiquent par les spécifications de `docs/specs/` ; la session principale orchestre.
 - Thème clair uniquement. Polices Google uniquement (Plus Jakarta Sans pour les titres, DM Sans, JetBrains Mono), chargées avec `next/font/google`.
+- Couleur primaire `#4F46E5` (survol `#4338CA`) : `#6366F1` n'atteignait pas 4.5:1 avec le blanc.
+- Page d'accueil : appel à l'action « Voir comment ça marche » (ancre), tant que l'inscription n'existe pas.
 - Agents de développement en `sonnet` par défaut ; l'orchestrateur demande `opus` à l'appel pour les tâches difficiles (authentification, isolation des données, logique de dates).
 
 ## Notions déjà vues (fiches)
@@ -43,6 +49,7 @@ Les quatre agents existent mais aucun n'a encore été appelé. Choisir la **pre
 - 02 — Agents IA : contexte séparé, outils, choix du modèle, orchestration.
 - 03 — Stratégie de tests : niveaux, pyramide et trophée, Vitest, RTL, limites avec les Server Components.
 - 04 — Recette et e2e : vérification et validation, Playwright, accessibilité, rapport de bug.
+- 05 — Polices et tokens : `next/font`, CLS, `font-display`, `@theme` de Tailwind 4, contraste.
 
 ## Notions à couvrir
 

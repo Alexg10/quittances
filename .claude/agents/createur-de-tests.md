@@ -23,7 +23,7 @@ On te confie une tâche déjà développée et sa spécification. Tu écris les 
 
 - **Unitaire** (Vitest seul) : la logique pure — calculs de montants, dates d'échéance, périodes, validations, formatage. C'est là que vont les cas limites : fin de mois, année bissextile, montant à zéro, paiement partiel, bail qui commence ou finit en cours de mois. Rapides, nombreux.
 - **Composant / intégration** (Vitest + React Testing Library) : un composant ou un formulaire tel que l'utilisateur s'en sert — ce qui s'affiche, ce qui se passe quand il clique, saisit, valide, se trompe.
-- **Bout en bout** (Playwright) : pas encore installé. Les CA qui ne peuvent être prouvés qu'ainsi (parcours sur plusieurs pages, authentification, Server Components `async`, que Vitest ne sait pas rendre) ne sont pas testés pour l'instant : liste-les dans ton compte rendu.
+- **Bout en bout** (Playwright) : installé, mais ces tests sont écrits par l'agent `qa`, pas par toi. Les CA qui ne peuvent être prouvés qu'ainsi (parcours sur plusieurs pages, authentification, layout racine, Server Components `async`, que Vitest ne sait pas rendre) reviennent à la QA : liste-les dans ton compte rendu.
 
 ## Comment tu écris
 

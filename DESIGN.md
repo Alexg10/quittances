@@ -8,8 +8,8 @@ Interface de gestion pour propriétaires bailleurs : suivre ses locations, confi
 
 ## Colors
 
-- **Primary** (#6366F1): boutons d'action, états actifs, liens, anneaux de focus — indigo
-- **Primary Hover** (#4F46E5): indigo plus sombre au survol des éléments primaires
+- **Primary** (#4F46E5): boutons d'action, états actifs, liens, anneaux de focus — indigo (6.3:1 avec le blanc ; #6366F1 n'atteignait que 4.47:1)
+- **Primary Hover** (#4338CA): indigo plus sombre au survol des éléments primaires
 - **Neutral** (#9C9C9C): placeholders, états désactivés, éléments décoratifs. Contraste insuffisant pour du texte à lire : utiliser Text Secondary à la place
 - **Background** (#FAFAFA): fond de page
 - **Surface** (#FFFFFF): cartes, panneaux, modales, fond de la navigation
@@ -38,7 +38,7 @@ Les montants utilisent DM Sans avec chiffres tabulaires (`tabular-nums`) et sont
 
 ## Elevation
 
-Ombres minimales. Les cartes reposent à plat avec une bordure de 1px. Seules les cartes cliquables gagnent une ombre légère au survol (0 8px 30px rgba(0,0,0,0.08)) et se soulèvent de 2px. Les boutons primaires gagnent une lueur teintée au survol (0 4px 12px rgba(99,102,241,0.35)). La navigation utilise un flou d'arrière-plan plutôt qu'une ombre. Menus déroulants et popovers utilisent shadow-lg. Le focus est un anneau indigo de 3px (0 0 0 3px rgba(99,102,241,0.12)) accompagné d'une bordure indigo.
+Ombres minimales. Les cartes reposent à plat avec une bordure de 1px. Seules les cartes cliquables gagnent une ombre légère au survol (0 8px 30px rgba(0,0,0,0.08)) et se soulèvent de 2px. Les boutons primaires gagnent une lueur teintée au survol (0 4px 12px rgba(79,70,229,0.35)). La navigation utilise un flou d'arrière-plan plutôt qu'une ombre. Menus déroulants et popovers utilisent shadow-lg. Le focus est un anneau indigo de 3px (0 0 0 3px rgba(79,70,229,0.12)) accompagné d'une bordure indigo.
 
 ## Components
 
@@ -75,7 +75,7 @@ Les quittances, reçus et avis d'échéance en PDF sont des documents imprimable
 
 ## Do's and Don'ts
 
-- Do : réserver l'indigo (#6366F1) aux éléments interactifs — jamais pour la décoration ou du texte statique
+- Do : réserver l'indigo (#4F46E5) aux éléments interactifs — jamais pour la décoration ou du texte statique
 - Do : respecter la grille de 4px pour tous les paddings, marges et gouttières
 - Do : Plus Jakarta Sans pour les titres, DM Sans pour le reste — ne jamais les intervertir
 - Do : cartes à 12px de rayon, boutons et champs à 6px — ne pas mélanger
@@ -84,5 +84,5 @@ Les quittances, reçus et avis d'échéance en PDF sont des documents imprimable
 - Don't : utiliser le noir pur (#000000) pour le texte de l'interface — utiliser les valeurs de la palette
 - Don't : ajouter de dégradés ni d'illustrations décoratives
 - Don't : mettre d'ombre sur des éléments statiques — l'élévation est réservée au survol et aux éléments flottants
-- Don't : utiliser plus de deux graisses de police sur un même écran
+- Don't : utiliser plus de deux graisses par famille de police sur un même écran (titres en 700 ; texte en 400 et 500)
 - Don't : placer plus d'un bouton primaire (indigo plein) dans une même section
