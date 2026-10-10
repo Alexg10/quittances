@@ -31,7 +31,20 @@ Dernière mise à jour : 2026-10-10
 
 ### Prochaine étape
 
-Choisir la **deuxième fonctionnalité** et la confier au `chef-de-projet`. Elle demandera les premiers choix techniques, à expliquer et décider avant la spécification : base de données (un serveur MCP Neon est disponible dans la session) et authentification. Suggestion : inscription et connexion du propriétaire, puisque tout le reste (locations, quittances, tableau de bord) dépend d'un compte et de l'isolation des données entre comptes.
+Fonctionnalité 02 : **inscription et connexion du propriétaire** (branche `inscription-et-connexion`).
+
+Choix techniques décidés :
+
+1. Base de données : Postgres chez Neon avec Drizzle. Fiche 08. Projet Neon « quittances » créé (`dark-cherry-23439229`, région `aws-eu-central-1`, Postgres 17). `DATABASE_URL` dans `.env.local` (hors git), modèle dans `.env.example`. Rien n'est encore installé côté code (ni Drizzle, ni schéma).
+2. Authentification : Better Auth, e-mail et mot de passe, comptes et sessions dans la base Neon. Fiche 09. Lien magique et réinitialisation du mot de passe reportés jusqu'au choix du service d'envoi d'e-mails.
+
+Spécification `docs/specs/02-inscription-et-connexion.md` rédigée par `chef-de-projet` et **validée** (40 règles, 36 critères, 5 tâches ; T1 à T4 en `opus`). Routes : `/inscription`, `/connexion`, `/tableau-de-bord`. Décisions : pas de nom à l'inscription ; mot de passe de 12 à 128 caractères sans confirmation ; message explicite « adresse déjà utilisée » ; session de 60 jours glissants ; token `error-text` `#B91C1C` ajouté à `DESIGN.md` ; base de test = branche Neon « test » (`DATABASE_URL_TEST` dans `.env.local`). La spécification 01 porte un renvoi vers la 02.
+
+**T1 (socle technique) terminée et commitée** : Drizzle 0.45 et pilote `pg`, Better Auth 1.7, migration `drizzle/0000_comptes_et_sessions.sql` appliquée aux deux bases, `src/db/`, `src/auth/` (`getAuth`, `getCurrentOwner`, `createAccount`, `normalizeEmail`), garde-fou de la base de test, test d'intégration (7 tests). Aucune route `/api/auth` : tout passe par des Server Actions. CA1 à CA6 vérifiés par le développeur puis par l'orchestrateur (pas de passe `qa` : rien à voir dans un navigateur). Commandes ajoutées à `CLAUDE.md`.
+
+Précisions inscrites dans la spécification après T1 : le cookie de session doit être renouvelé à la navigation, à faire en T3 (R16) ; une adresse refusée par Better Auth donne le message E2 (R5) ; ni adresse IP ni agent utilisateur enregistrés avec la session (R17) ; CA22 corrigé à 60 jours.
+
+Étape en cours : **T2 (composants de formulaire et page `/inscription`)** chez `developpeur-front` en `opus`. Puis `createur-de-tests`, puis `qa`. À faire en T2 : passer `reuseExistingServer` de Playwright à `false`, les e2e écrivant désormais en base.
 
 Points laissés ouverts par la recette, à reprendre dans une prochaine spécification :
 
@@ -55,6 +68,9 @@ Points laissés ouverts par la recette, à reprendre dans une prochaine spécifi
 - Thème clair uniquement. Polices Google uniquement (Plus Jakarta Sans pour les titres, DM Sans, JetBrains Mono), chargées avec `next/font/google`.
 - Couleur primaire `#4F46E5` (survol `#4338CA`) : `#6366F1` n'atteignait pas 4.5:1 avec le blanc.
 - Page d'accueil : appel à l'action « Voir comment ça marche » (ancre), tant que l'inscription n'existe pas.
+- Base de données : Postgres hébergé chez Neon, accès avec Drizzle (schéma et requêtes typés, migrations SQL).
+- Authentification : Better Auth, e-mail et mot de passe ; les comptes et les sessions vivent dans la base du projet.
+- Base Neon en région Europe (Francfort).
 - Les routes internes passent par `next/link`, jamais par un `<a>` natif : pas de rechargement complet de la page.
 - Agents de développement en `sonnet` par défaut ; l'orchestrateur demande `opus` à l'appel pour les tâches difficiles (authentification, isolation des données, logique de dates).
 
@@ -67,6 +83,8 @@ Points laissés ouverts par la recette, à reprendre dans une prochaine spécifi
 - 05 — Polices et tokens : `next/font`, CLS, `font-display`, `@theme` de Tailwind 4, contraste.
 - 06 — Server Components : frontière `"use client"`, hydratation, HTML sémantique (liens, titres, repères, listes).
 - 07 — Accessibilité au clavier : lien d'évitement, `:focus-visible`, ancres sous un en-tête fixe, techniques de masquage, `next/link`.
+- 08 — Base de données : Postgres, Neon, ORM, migrations, isolation des données, accès depuis l'App Router.
+- 09 — Authentification : hachage, session et cookie `httpOnly`, CSRF, autorisation, protection des routes dans l'App Router.
 
 ## Notions à couvrir
 

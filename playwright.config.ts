@@ -1,7 +1,16 @@
 import { defineConfig, devices } from "@playwright/test";
 
+import { requireTestDatabaseUrl } from "./src/db/test-database";
+import { loadLocalEnv } from "./src/env";
+
 const PORT = 3100;
 const baseURL = `http://localhost:${PORT}`;
+
+// Garde-fou (R40 de la spécification 02) : le serveur des tests e2e ne parle
+// qu'à la base de test. Sans DATABASE_URL_TEST, le lancement échoue ici, avant
+// tout build : il ne se rabat jamais sur la base de développement.
+loadLocalEnv();
+const testDatabaseUrl = requireTestDatabaseUrl(process.env);
 
 export default defineConfig({
   testDir: "./e2e",
@@ -24,6 +33,14 @@ export default defineConfig({
   webServer: {
     command: `pnpm build && pnpm start --port ${PORT}`,
     url: baseURL,
+    // Ces variables s'ajoutent à l'environnement du processus et priment sur
+    // .env.local, que Next ne lit que pour les variables encore non définies.
+    env: {
+      // Le code applicatif lit DATABASE_URL : ici, c'est la base de test.
+      DATABASE_URL: testDatabaseUrl,
+      // L'application est servie sur le port 3100 pendant les tests e2e.
+      BETTER_AUTH_URL: baseURL,
+    },
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },

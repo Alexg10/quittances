@@ -2,6 +2,8 @@
 
 Statut : validée par l'utilisateur le 2026-10-10 (Q1, Q2, Q4 et Q6 tranchées selon les hypothèses recommandées ; `DESIGN.md` mis à jour pour Q1 et Q4). Première fonctionnalité du projet, elle sert aussi à roder la chaîne spec → développeur → tests → QA.
 
+**Modifiée par la spécification 02** : l'appel à l'action, la section « Les inscriptions ouvrent bientôt » et l'en-tête changent. Voir la section « Effet sur la spécification 01 et sur les tests existants » de `docs/specs/02-inscription-et-connexion.md`, qui prime sur ce document pour ces points.
+
 Références : `CLAUDE.md` (produit), `DESIGN.md` (design system), `docs/AVANCEMENT.md` (décisions). Le code applicatif se trouve dans `src/app/` (le projet a été créé avec `--src-dir`).
 
 ## Objectif

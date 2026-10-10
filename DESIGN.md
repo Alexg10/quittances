@@ -18,7 +18,8 @@ Interface de gestion pour propriétaires bailleurs : suivre ses locations, confi
 - **Border** (#E8E8EC): bordures de cartes, séparateurs, bordures de champs
 - **Success** (#10B981): loyer payé, quittance envoyée, confirmations
 - **Warning** (#F59E0B): loyer en attente de confirmation, paiement partiel
-- **Error** (#EF4444): loyer en retard, actions destructrices, erreurs de validation
+- **Error** (#EF4444): loyer en retard, actions destructrices, erreurs de validation — bordures et fonds teintés seulement, jamais du texte (3.76:1 sur blanc)
+- **Error Text** (#B91C1C): texte des messages d'erreur (6.47:1 sur blanc)
 
 Un statut n'est jamais indiqué par la couleur seule : il est toujours accompagné de son libellé.
 
@@ -44,7 +45,7 @@ Ombres minimales. Les cartes reposent à plat avec une bordure de 1px. Seules le
 
 - **Buttons**: Primary : fond indigo, texte blanc, rayon 6px, graisse medium. Secondary : fond transparent, bordure 1px, même rayon. Ghost : ni bordure ni fond, changement de couleur du texte au survol. Destructive : texte rouge, bordure rouge. Tous se décalent de 1px vers le haut au survol. Tailles : small (32px), medium (38px), large (44px).
 - **Cards**: surface blanche, bordure 1px, rayon 12px, overflow hidden. Une carte de location affiche l'adresse du bien, le nom du locataire, le montant du loyer et le statut du mois en cours. Transition 200ms.
-- **Inputs**: bordure 1px, fond surface, rayon 6px, padding 10px vertical et 14px horizontal, texte 14px. Chaque champ a un label visible au-dessus. Focus : bordure indigo et anneau de 3px. Erreur : bordure rouge et message sous le champ. Placeholder en Neutral.
+- **Inputs**: bordure 1px, fond surface, rayon 6px, padding 10px vertical et 14px horizontal, texte 14px. Chaque champ a un label visible au-dessus. Focus : bordure indigo et anneau de 3px. Erreur : bordure Error et message sous le champ en Error Text. Placeholder en Neutral.
 - **Status chips**: forme pilule (9999px), padding 4px vertical et 12px horizontal, texte 12px, fond teinté et texte de la couleur sémantique. Statuts d'un loyer : « Payé » (success), « En attente » (warning), « Partiel » (warning), « En retard » (error), « À venir » (gris).
 - **Lists / tables**: lignes empilées séparées par un filet de 1px. Chaque ligne en flex space-between, padding 12px vertical et 16px horizontal, léger changement de fond au survol. Utilisées pour l'historique des loyers et la liste des documents envoyés. Sur mobile, une ligne de tableau devient une carte empilée.
 - **Empty states**: titre court, une phrase d'explication et un seul bouton primaire (« Ajouter une location »). Pas d'illustration.
