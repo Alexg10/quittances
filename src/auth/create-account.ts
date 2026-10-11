@@ -3,7 +3,6 @@
 // pas de nom (Q2), adresse normalisée (R4), unicité sous concurrence (R6).
 import "server-only";
 
-import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
 
 import { getDb } from "../db";
@@ -38,10 +37,8 @@ export async function createAccount(
     });
     return "created";
   } catch (error) {
-    if (!(error instanceof APIError)) {
-      throw error;
-    }
-    const code = error.body?.code;
+    // Sans code reconnu, l'erreur est relancée plus bas (panne).
+    const code = readErrorCode(error);
 
     if (code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
       return "email-already-used";
@@ -58,6 +55,22 @@ export async function createAccount(
     }
     throw error;
   }
+}
+
+// Lit le code d'une erreur de Better Auth (`error.body.code`), s'il y en a un.
+// On ne teste pas `error instanceof APIError` : le refus d'une adresse mal
+// formée (VALIDATION_ERROR) est levé par une couche interne de la bibliothèque
+// avec une autre classe d'erreur, pour laquelle ce test est faux. Constaté sur
+// le build de production : l'adresse refusée était alors prise pour une panne.
+function readErrorCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("body" in error)) {
+    return undefined;
+  }
+  const body = error.body;
+  if (typeof body !== "object" || body === null || !("code" in body)) {
+    return undefined;
+  }
+  return typeof body.code === "string" ? body.code : undefined;
 }
 
 async function isEmailUsed(email: string): Promise<boolean> {

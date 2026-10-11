@@ -23,6 +23,8 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
+  /* Texte d'erreur (R31 de la spécification 02) : `error` ne suffit pas pour du texte. */
+  --color-error-text: #b91c1c;
 
   /* Polices (R3) : les variables --font-*-face sont posées par next/font dans le layout. */
   --font-display: var(--font-display-face);
@@ -82,8 +84,10 @@
     scroll-padding-top: calc(var(--spacing) * 18);
   }
 
-  /* Focus clavier de tous les liens (R29) : contour plein + ombre focus. */
-  a:focus-visible {
+  /* Focus clavier de tous les liens (R29) et de tous les boutons (R37 de la
+     spécification 02) : contour plein + ombre focus. */
+  a:focus-visible,
+  button:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
     box-shadow: var(--shadow-focus);

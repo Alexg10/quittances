@@ -262,3 +262,26 @@ describe("CA4 — unicité de l'adresse normalisée", () => {
     expect(await countAccounts(email)).toBe(1);
   });
 });
+
+describe("R5 (précision après T1) — adresse refusée par la bibliothèque d'authentification", () => {
+  // Adresses que notre règle (R5) accepte mais que Better Auth refuse.
+  // Régression : le refus était pris pour une panne sur le build de production.
+  const refusedByLibrary = [
+    ["deux points consécutifs dans la partie locale", "marie..durand"],
+    ["un caractère accentué", "marié"],
+  ];
+
+  it.each(refusedByLibrary)(
+    "renvoie email-rejected, sans compte ni session, pour %s",
+    async (_description, localPart) => {
+      const email = uniqueEmail(`${localPart}-${randomUUID()}`);
+
+      await expect(createAccount(email, uniquePassword())).resolves.toBe(
+        "email-rejected",
+      );
+
+      expect(await countAccounts(email)).toBe(0);
+      expect(browser.cookies.has(SESSION_COOKIE)).toBe(false);
+    },
+  );
+});

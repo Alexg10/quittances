@@ -44,7 +44,20 @@ Spécification `docs/specs/02-inscription-et-connexion.md` rédigée par `chef-d
 
 Précisions inscrites dans la spécification après T1 : le cookie de session doit être renouvelé à la navigation, à faire en T3 (R16) ; une adresse refusée par Better Auth donne le message E2 (R5) ; ni adresse IP ni agent utilisateur enregistrés avec la session (R17) ; CA22 corrigé à 60 jours.
 
-Étape en cours : **T2 (composants de formulaire et page `/inscription`)** chez `developpeur-front` en `opus`. Puis `createur-de-tests`, puis `qa`. À faire en T2 : passer `reuseExistingServer` de Playwright à `false`, les e2e écrivant désormais en base.
+**T2 (composants de formulaire et page `/inscription`) développée** par `developpeur-front` en `opus` (interrompu une fois par la mise en veille de l'ordinateur, puis repris), vérifiée par l'orchestrateur, pas encore testée, recettée ni commitée : `src/app/(auth)/` (layout commun, `inscription/page.tsx`, `sign-up-form.tsx`, `actions.ts`), `src/components/` (`field`, `password-field`, `submit-button`, `form-message`), règles pures dans `src/auth/sign-up-validation.ts`, `messages.ts`, `form-state.ts`, `/tableau-de-bord` provisoire mais protégée. Build : `○ /inscription`, `◐ /tableau-de-bord`. Correctif dans le socle de T1 : une adresse refusée par Better Auth donnait E8 au lieu de E2. `reuseExistingServer` de Playwright passé à `false`. Fiche 10.
+
+T2 testée par `createur-de-tests` (115 tests Vitest, 9 tests d'intégration, sept mutations détectées) puis recettée par `qa` : **livrable**, CA10 à CA15 et CA31 conformes, 0 violation axe, isolation entre deux comptes vérifiée, formulaire fonctionnel sans JavaScript, aucune redirection ouverte ni fuite du mot de passe. Nouveaux `e2e/inscription.spec.ts` et `e2e/aide-comptes.ts` ; suite e2e à 107 réussis, 3 ignorés (dont un `fixme` par projet à activer en T4 : lien « Se connecter » sans rechargement). Pas encore commitée.
+
+À traiter en T3 :
+
+- Sans JavaScript, `/tableau-de-bord` n'affiche que « Chargement en cours » (contenu sous `<Suspense>` révélé par script), ce qui contredit R29 et CA28. Chercher d'abord un rendu bloquant dans la documentation de Next ; sinon assouplir la spécification aux seules pages publiques.
+- Base injoignable : `/tableau-de-bord` redirige vers `/connexion` au lieu d'afficher l'écran de panne (R24, CA29), alors que `getCurrentOwner` est censée relancer l'erreur.
+- Renouvellement du cookie de session à la navigation (R16).
+- Deux défauts mineurs relevés par la QA : la longueur du mot de passe compte les unités UTF-16 (6 emojis passent pour 12 caractères) ; le bouton en attente a la même apparence que le bouton actif.
+
+Connu et attendu jusqu'à T4 : erreurs 404 sur `/connexion`.
+
+Les comptes `@quittances.test` de la base de test peuvent être purgés à tout moment ; chaque exécution de `pnpm test:e2e` en crée.
 
 Points laissés ouverts par la recette, à reprendre dans une prochaine spécification :
 
@@ -85,6 +98,7 @@ Points laissés ouverts par la recette, à reprendre dans une prochaine spécifi
 - 07 — Accessibilité au clavier : lien d'évitement, `:focus-visible`, ancres sous un en-tête fixe, techniques de masquage, `next/link`.
 - 08 — Base de données : Postgres, Neon, ORM, migrations, isolation des données, accès depuis l'App Router.
 - 09 — Authentification : hachage, session et cookie `httpOnly`, CSRF, autorisation, protection des routes dans l'App Router.
+- 10 — Server Actions et formulaires : `useActionState`, amélioration progressive, validation serveur, accessibilité des formulaires.
 
 ## Notions à couvrir
 

@@ -41,7 +41,9 @@ export default defineConfig({
       // L'application est servie sur le port 3100 pendant les tests e2e.
       BETTER_AUTH_URL: baseURL,
     },
-    reuseExistingServer: !process.env.CI,
+    // Jamais de serveur réutilisé : les tests écrivent en base, et un serveur
+    // déjà lancé sur ce port pourrait être branché sur la base de développement.
+    reuseExistingServer: false,
     timeout: 180_000,
   },
 });
