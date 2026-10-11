@@ -4,8 +4,11 @@ import { expect, test, type Page } from "@playwright/test";
 // Page d'accueil (spec 01, T3) : en-tête fixe, lien d'évitement, ancres, focus.
 // CA23 (complet), CA24, CA25 (et R24), CA26, CA27, CA28, CA29, CA35, et le parcours
 // « clic sur le logo » (étape 4 du parcours utilisateur).
+// Adapté à la spec 02 (R38) : le bouton primaire est « Créer mon compte » (vers /inscription),
+// l'en-tête a un lien « Se connecter », la section « inscriptions » n'existe plus.
 
-const BOUTON = "Voir comment ça marche";
+const BOUTON = "Créer mon compte";
+const CONNEXION = "Se connecter";
 const HAUTEUR_ENTETE = 56;
 
 async function ouvrir(page: Page, chemin = "/") {
@@ -29,9 +32,17 @@ async function titreSousEnTete(page: Page, titre: string) {
 }
 
 test.describe("Page d'accueil, en-tête et navigation", () => {
-  test("CA23 : « Voir comment ça marche » amène le titre sous l'en-tête", async ({ page }) => {
-    await ouvrir(page);
-    await page.getByRole("link", { name: BOUTON }).click();
+  test("CA23 : « Fonctionnement » (bureau) ou l'arrivée directe (mobile) amène le titre sous l'en-tête", async ({
+    page,
+    isMobile,
+  }) => {
+    if (isMobile) {
+      // Sous 768px la navigation n'existe pas : on arrive directement sur l'ancre.
+      await ouvrir(page, "/#fonctionnement");
+    } else {
+      await ouvrir(page);
+      await page.getByRole("link", { name: "Fonctionnement", exact: true }).click();
+    }
     await expect(page).toHaveURL(/#fonctionnement$/);
     await titreSousEnTete(page, "Comment ça marche");
   });
@@ -40,12 +51,14 @@ test.describe("Page d'accueil, en-tête et navigation", () => {
     page,
   }) => {
     for (const [ancre, titre] of [
+      ["#fonctionnement", "Comment ça marche"],
       ["#fonctionnalites", "Ce que fait Quittances"],
-      ["#inscriptions", "Les inscriptions ouvrent bientôt"],
     ]) {
       await ouvrir(page, `/${ancre}`);
       await titreSousEnTete(page, titre);
     }
+    // R38 : l'ancre #inscriptions n'existe plus.
+    await expect(page.locator("#inscriptions")).toHaveCount(0);
   });
 
   test("CA24, R24 : « Fonctionnalités » mène au titre, liens de navigation en 14px 500", async ({
@@ -144,6 +157,7 @@ test.describe("Page d'accueil, en-tête et navigation", () => {
       "Aller au contenu",
       "Quittances, accueil",
       ...(isMobile ? [] : ["Fonctionnement", "Fonctionnalités"]),
+      CONNEXION,
       BOUTON,
     ];
     const vus: string[] = [];
@@ -182,7 +196,7 @@ test.describe("Page d'accueil, en-tête et navigation", () => {
     // Le bouton indigo passe sous la barre floutée : le contraste du logo ne doit pas devenir indécidable.
     await page.evaluate(() => {
       const b = [...document.querySelectorAll("a")].find((a) =>
-        a.textContent?.includes("Voir comment"),
+        a.textContent?.includes("Créer mon compte"),
       )!;
       window.scrollTo(0, b.getBoundingClientRect().top + scrollY - 20);
     });
@@ -227,9 +241,7 @@ test.describe("Page d'accueil, en-tête et navigation", () => {
       if (m.type() === "error" || m.type() === "warning") messages.push(`${m.type()}: ${m.text()}`);
     });
     page.on("pageerror", (e) => messages.push(`pageerror: ${e.message}`));
-    await ouvrir(page);
-    await page.getByRole("link", { name: BOUTON }).click();
-    await expect(page).toHaveURL(/#fonctionnement$/);
+    await ouvrir(page, "/#fonctionnement");
     if (!isMobile) {
       for (const nom of ["Fonctionnalités", "Fonctionnement"]) {
         await page.getByRole("link", { name: nom, exact: true }).click();
@@ -274,7 +286,7 @@ test.describe("Page d'accueil, en-tête et navigation", () => {
     };
   }
 
-  for (const depart of ["/", "/#inscriptions"]) {
+  for (const depart of ["/", "/#fonctionnalites"]) {
     test(`Parcours étape 4, R24 : le logo ramène en haut de page sans recharger le document, depuis ${depart}`, async ({
       page,
     }) => {
@@ -324,9 +336,17 @@ test.describe("Page d'accueil, en-tête et navigation", () => {
     await surveillance.verifier();
   });
 
-  test("Parcours étape 2 : Précédent après l'ancre ramène en haut de page", async ({ page }) => {
+  test("Parcours étape 2 : Précédent après l'ancre ramène en haut de page", async ({
+    page,
+    isMobile,
+  }) => {
     await ouvrir(page);
-    await page.getByRole("link", { name: BOUTON }).click();
+    if (isMobile) {
+      // Pas de navigation sous 768px : on arrive sur l'ancre par l'adresse.
+      await page.goto("/#fonctionnement");
+    } else {
+      await page.getByRole("link", { name: "Fonctionnement", exact: true }).click();
+    }
     await expect(page).toHaveURL(/#fonctionnement$/);
     await page.goBack();
     await expect(page).toHaveURL(/\/$/);

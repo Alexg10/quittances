@@ -9,7 +9,9 @@ const SURTITRE = "Pour les propriétaires bailleurs";
 const ACCROCHE =
   "Le jour de l'échéance, Quittances vous demande par e-mail si le loyer est arrivé. Vous confirmez, la quittance PDF part chez votre locataire. Sinon, il reçoit une relance.";
 const INTRO_ETAPES = "Trois étapes, une fois par mois et par location.";
-const TEXTE_INSCRIPTIONS =
+// Textes supprimés par la spécification 02 (section « Page d'accueil », R38).
+const ANCIEN_TITRE_INSCRIPTIONS = "Les inscriptions ouvrent bientôt";
+const ANCIEN_TEXTE_INSCRIPTIONS =
   "Quittances est en cours de développement. La création de compte n'est pas encore disponible.";
 const TEXTE_PIED =
   "Quittances, l'envoi des quittances de loyer et des relances pour les propriétaires bailleurs.";
@@ -66,7 +68,7 @@ describe("Page d'accueil", () => {
     expect(h1[0].textContent).toBe(TITRE_H1);
   });
 
-  it("CA12 — contient exactement trois titres de niveau 2, dans l'ordre", () => {
+  it("spéc. 02, CA33 (remplace spéc. 01, CA12) — contient exactement deux titres de niveau 2, dans l'ordre", () => {
     render(<Home />);
 
     const h2 = screen.getAllByRole("heading", { level: 2 });
@@ -74,7 +76,6 @@ describe("Page d'accueil", () => {
     expect(h2.map((h) => h.textContent)).toEqual([
       "Comment ça marche",
       "Ce que fait Quittances",
-      "Les inscriptions ouvrent bientôt",
     ]);
   });
 
@@ -146,25 +147,19 @@ describe("Page d'accueil", () => {
     });
   });
 
-  it("CA16 — la section « Les inscriptions ouvrent bientôt » contient le texte exact", () => {
-    render(<Home />);
-    const section = screen.getByRole("region", {
-      name: "Les inscriptions ouvrent bientôt",
-    });
+  it("spéc. 02, CA33 / R38 — la section « Les inscriptions ouvrent bientôt » n'existe plus : ni région, ni titre, ni texte, ni élément d'identifiant inscriptions", () => {
+    const { container } = render(<Home />);
+    const texte = (container.textContent ?? "").replace(/\s+/g, " ");
 
-    expect(within(section).getByText(TEXTE_INSCRIPTIONS)).toBeInTheDocument();
-  });
-
-  it("CA16 — la section « Les inscriptions ouvrent bientôt » ne contient ni lien, ni bouton, ni champ", () => {
-    render(<Home />);
-    const section = screen.getByRole("region", {
-      name: "Les inscriptions ouvrent bientôt",
-    });
-
-    expect(within(section).queryByRole("link")).toBeNull();
-    expect(within(section).queryByRole("button")).toBeNull();
-    expect(within(section).queryByRole("textbox")).toBeNull();
-    expect(section.querySelector("a, button, input, textarea, select")).toBeNull();
+    expect(
+      screen.queryByRole("region", { name: ANCIEN_TITRE_INSCRIPTIONS }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: ANCIEN_TITRE_INSCRIPTIONS }),
+    ).toBeNull();
+    expect(texte).not.toContain(ANCIEN_TITRE_INSCRIPTIONS);
+    expect(texte).not.toContain(ANCIEN_TEXTE_INSCRIPTIONS);
+    expect(container.querySelector("#inscriptions")).toBeNull();
   });
 
   it("CA17 — le pied de page (contentinfo) contient le texte exact", () => {
@@ -184,15 +179,14 @@ describe("Page d'accueil", () => {
     expect(pied.querySelector("a")).toBeNull();
   });
 
-  it("CA18 — le lien « Voir comment ça marche » pointe vers #fonctionnement", () => {
-    render(<Home />);
+  it("spéc. 02, CA33 / R38 — plus aucun lien ni texte « Voir comment ça marche »", () => {
+    const { container } = render(<Home />);
 
-    const lien = screen.getByRole("link", { name: "Voir comment ça marche" });
-
-    expect(lien).toHaveAttribute("href", "#fonctionnement");
+    expect(screen.queryByRole("link", { name: "Voir comment ça marche" })).toBeNull();
+    expect(container.textContent).not.toContain("Voir comment ça marche");
   });
 
-  it("CA18 — l'élément d'identifiant fonctionnement existe et contient le titre « Comment ça marche »", () => {
+  it("CA18 (seconde moitié, inchangée par la spéc. 02) — l'élément d'identifiant fonctionnement existe et contient le titre « Comment ça marche »", () => {
     const { container } = render(<Home />);
 
     const cible = container.querySelector("#fonctionnement");
@@ -205,7 +199,7 @@ describe("Page d'accueil", () => {
     ).toBeInTheDocument();
   });
 
-  it("CA19 — le texte de la page ne contient aucun terme interdit", () => {
+  it("spéc. 01, CA19 réduit par la spéc. 02 — le texte de la page ne contient aucun terme interdit", () => {
     const { container } = render(<Home />);
     const termes = [
       "whatsapp",
@@ -219,9 +213,8 @@ describe("Page d'accueil", () => {
       "prix",
       "conforme",
       "légal",
-      "créer mon compte",
+      // « créer mon compte » et « se connecter » sont désormais attendus (spéc. 02).
       "s'inscrire",
-      "se connecter",
     ];
     // Espaces normalisés pour qu'un terme coupé par un retour à la ligne soit trouvé.
     const texte = (container.textContent ?? "")
@@ -243,9 +236,16 @@ describe("Page d'accueil", () => {
     expect(interdits).toHaveLength(0);
   });
 
-  it("CA20 — la cible de chaque lien est /, #contenu, #fonctionnement ou #fonctionnalites", () => {
+  it("spéc. 01, CA20 étendu par la spéc. 02 — la cible de chaque lien est /, #contenu, #fonctionnement, #fonctionnalites, /connexion ou /inscription", () => {
     render(<Home />);
-    const autorisees = ["/", "#contenu", "#fonctionnement", "#fonctionnalites"];
+    const autorisees = [
+      "/",
+      "#contenu",
+      "#fonctionnement",
+      "#fonctionnalites",
+      "/connexion",
+      "/inscription",
+    ];
 
     const liens = screen.getAllByRole("link");
     const cibles = liens.map((lien) => lien.getAttribute("href"));
@@ -326,20 +326,67 @@ describe("Page d'accueil", () => {
     expect(premier).toHaveAccessibleName("Aller au contenu");
   });
 
-  it("R19 / parcours étape 5 — l'ordre des liens est celui de la spécification, sans autre lien", () => {
+  it("spéc. 02, CA33 et parcours 5 — l'ordre des liens est celui de la spécification, avec leurs cibles, sans autre lien", () => {
     render(<Home />);
 
     const attendus = [
-      "Aller au contenu",
-      "Quittances, accueil",
-      "Fonctionnement",
-      "Fonctionnalités",
-      "Voir comment ça marche",
+      ["Aller au contenu", "#contenu"],
+      ["Quittances, accueil", "/"],
+      ["Fonctionnement", "#fonctionnement"],
+      ["Fonctionnalités", "#fonctionnalites"],
+      ["Se connecter", "/connexion"],
+      ["Créer mon compte", "/inscription"],
     ];
     const liens = screen.getAllByRole("link");
 
     expect(liens).toHaveLength(attendus.length);
-    attendus.forEach((nom, i) => expect(liens[i]).toHaveAccessibleName(nom));
+    attendus.forEach(([nom, href], i) => {
+      expect(liens[i]).toHaveAccessibleName(nom);
+      expect(liens[i]).toHaveAttribute("href", href);
+    });
+  });
+
+  it("spéc. 02, R38 / CA33 — « Créer mon compte » est un lien vers /inscription, dans main, et non un bouton", () => {
+    render(<Home />);
+    const main = screen.getByRole("main");
+
+    const lien = within(main).getByRole("link", { name: "Créer mon compte" });
+
+    expect(lien).toHaveAttribute("href", "/inscription");
+    expect(screen.queryByRole("button", { name: "Créer mon compte" })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Créer mon compte" })).toHaveLength(1);
+  });
+
+  it("spéc. 02, R38 / CA33 — « Se connecter » est un lien vers /connexion, dans le repère banner et hors de la navigation", () => {
+    render(<Home />);
+    const banner = screen.getByRole("banner");
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+
+    const lien = within(banner).getByRole("link", { name: "Se connecter" });
+
+    expect(lien).toHaveAttribute("href", "/connexion");
+    expect(nav.contains(lien)).toBe(false);
+    expect(within(nav).queryByRole("link", { name: "Se connecter" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Se connecter" })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Se connecter" })).toHaveLength(1);
+  });
+
+  it("spéc. 02, R38 — la navigation « Navigation principale » garde exactement ses deux liens", () => {
+    render(<Home />);
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+
+    expect(within(nav).getAllByRole("link")).toHaveLength(2);
+    expect(screen.getAllByRole("navigation")).toHaveLength(1);
+  });
+
+  it("spéc. 02, R39 — la page est identique pour tous : aucune adresse e-mail, aucune donnée de session", () => {
+    const { container } = render(<Home />);
+    const texte = container.textContent ?? "";
+
+    expect(texte).not.toMatch(/\S+@\S+/);
+    expect(texte).not.toMatch(/connecté en tant que/i);
+    expect(texte).not.toMatch(/se déconnecter/i);
+    expect(screen.queryByRole("link", { name: /tableau de bord/i })).toBeNull();
   });
 
   it("CA22 — aucun niveau de titre n'est sauté dans l'ordre du document", () => {

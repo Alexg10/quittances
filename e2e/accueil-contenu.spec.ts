@@ -2,8 +2,10 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 
 // Page d'accueil (spec 01, T2) : CA30 à CA34, CA36 et la précision de R31 sur le h1.
 // CA23 (ancre et titre sous l'en-tête) est couvert en entier dans accueil-entete.spec.ts.
+// Depuis la spec 02 (R38), le bouton primaire est « Créer mon compte » (vers /inscription) et
+// la page n'a plus que deux h2 ; ses nouveaux liens sont testés dans accueil-connexion.spec.ts.
 
-const BOUTON = "Voir comment ça marche";
+const BOUTON = "Créer mon compte";
 
 async function ouvrir(page: Page, largeur?: number) {
   if (largeur) await page.setViewportSize({ width: largeur, height: 900 });
@@ -160,13 +162,15 @@ test.describe("Page d'accueil, contenu", () => {
     const page = await context.newPage();
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2 })).toHaveCount(3);
+    // Deux h2 depuis la suppression de la section « Les inscriptions ouvrent bientôt » (R38).
+    await expect(page.getByRole("heading", { level: 2 })).toHaveCount(2);
     for (const h2 of await page.getByRole("heading", { level: 2 }).all()) {
       await expect(h2).toBeVisible();
     }
     await expect(page.getByRole("contentinfo")).toBeVisible();
-    await page.getByRole("link", { name: BOUTON }).click();
-    await expect(page).toHaveURL(/#fonctionnement$/);
+    // Le bouton mène désormais à /inscription : l'ancre se vérifie par l'arrivée directe.
+    await expect(page.getByRole("link", { name: BOUTON })).toHaveAttribute("href", "/inscription");
+    await page.goto("/#fonctionnement");
     await expect(
       page.getByRole("heading", { level: 2, name: "Comment ça marche" }),
     ).toBeInViewport();

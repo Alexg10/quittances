@@ -831,7 +831,10 @@ test.describe("Parcours complet", () => {
   test("Parcours 1 à 4 de bout en bout : inscription, déconnexion, page protégée, connexion, retour, déconnexion", async ({
     page,
   }) => {
-    // 1. Inscription : arrivée connectée.
+    // 1. Depuis l'accueil, « Créer mon compte » mène à l'inscription ; arrivée connectée.
+    await page.goto("/");
+    await page.getByRole("link", { name: "Créer mon compte" }).click();
+    await expect(page).toHaveURL((u) => u.pathname === "/inscription");
     const { email, motDePasse } = await inscrire(page);
     await expect(page.getByText(`Connecté en tant que ${email}`)).toBeVisible();
     // 3. Déconnexion : /connexion, formulaire vide, sans message.
@@ -839,6 +842,11 @@ test.describe("Parcours complet", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
     await expect(champEmail(page)).toHaveValue("");
     await expect(page.locator("form").getByRole("alert")).toHaveCount(0);
+    // Depuis l'accueil, « Se connecter » mène au formulaire de connexion.
+    await page.getByRole("link", { name: "Quittances, accueil" }).click();
+    await expect(page).toHaveURL((u) => u.pathname === "/");
+    await page.getByRole("link", { name: "Se connecter" }).click();
+    await expect(page).toHaveURL((u) => u.pathname === "/connexion");
     // 4. Page protégée demandée sans session.
     await page.goto("/tableau-de-bord?exemple=1");
     await expect(page).toHaveURL((u) => u.pathname + u.search === RETOUR);

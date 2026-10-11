@@ -29,54 +29,29 @@ Dernière mise à jour : 2026-10-10
 18. Recette complète par `qa` : CA21 et CA23 à CA29 conformes, 0 violation axe ; un bug trouvé (B1 : le logo ne ramenait pas en haut de page depuis `/`, à cause de `next/link`). Premier correctif (`<a href="/">` natif) refusé par l'utilisateur, qui ne veut pas de rechargement complet ; correctif retenu : `Link` isolé dans un Client Component minimal, `src/app/logo-link.tsx`, avec `onNavigate` qui remet le défilement à 0. Spécification mise à jour (R20, R24, parcours étape 4). Nouveau `e2e/accueil-entete.spec.ts` ; `eslint.config.mjs` ignore maintenant `playwright-report/` et `test-results/`.
 19. Test e2e du logo renforcé par `qa` (pas de rechargement du document, clavier, Ctrl ou Cmd + clic), éprouvé en remettant un `<a>` natif. État final : lint propre, `○ /`, 27 tests Vitest, 75 tests e2e réussis et 1 ignoré (navigation de l'en-tête, absente sur mobile). **Fonctionnalité 01 terminée**, commitée et fusionnée dans `main`.
 
+20. Deuxième fonctionnalité, **inscription et connexion du propriétaire** : choix techniques expliqués et décidés (Postgres chez Neon avec Drizzle, fiche 08 ; Better Auth avec e-mail et mot de passe, fiche 09). Projet Neon « quittances » en région Europe, branche `test` pour les tests. Spécification `docs/specs/02-inscription-et-connexion.md` validée (5 tâches, T1 à T4 en `opus`).
+21. T1, socle technique (`f2103f9`) : Drizzle et pilote `pg`, migration des comptes et sessions, Better Auth, `getCurrentOwner`, `createAccount`, garde-fou de la base de test, `pnpm test:integration`. Aucune route `/api/auth` : tout passe par des Server Actions.
+22. T2, page `/inscription` et composants de formulaire (`70f9eb2`). Fiche 10.
+23. T3, `/tableau-de-bord` en rendu bloquant, `src/proxy.ts` (renouvellement du cookie, redirection précoce), déconnexion avec rechargement complet, écran de panne (`4357088`). Fiche 11.
+24. T4, page `/connexion`, retour vers la page demandée par l'en-tête `Referer`, propriétaire déjà connecté redirigé, ancienne session fermée à la reconnexion (`8a73ea7`). **Une redirection ouverte trouvée par la recette et corrigée** (`retour=/.//hôte`) : forme canonique exigée et destination reconstruite par le serveur. Fiche 12.
+25. T5, page d'accueil : « Créer mon compte » et « Se connecter » en `Link`, section « Les inscriptions ouvrent bientôt » supprimée, tests de la fonctionnalité 01 adaptés.
+26. **Fonctionnalité 02 terminée**, commitée et fusionnée dans `main`. État final : lint propre ; build `○ /`, `○ /connexion`, `○ /inscription`, `ƒ /tableau-de-bord` ; 1180 tests Vitest ; 23 tests d'intégration ; 215 tests e2e réussis et 1 ignoré (navigation de l'en-tête sur mobile, absente sous 768px).
+
 ### Prochaine étape
 
-Fonctionnalité 02 : **inscription et connexion du propriétaire** (branche `inscription-et-connexion`).
+Choisir la **troisième fonctionnalité** et la confier au `chef-de-projet`. Suggestion : **gestion des locations** (créer, modifier, lister ses locations : bien, locataire et son e-mail, montant du loyer et des charges, jour d'échéance). C'est la première donnée métier, donc la première vraie mise à l'épreuve de l'isolation entre comptes (R2 de la spécification 02), et elle ne demande aucun nouveau choix technique. Les quittances PDF, l'envoi d'e-mails et les tâches planifiées viendront ensuite et s'appuieront dessus.
 
-Choix techniques décidés :
-
-1. Base de données : Postgres chez Neon avec Drizzle. Fiche 08. Projet Neon « quittances » créé (`dark-cherry-23439229`, région `aws-eu-central-1`, Postgres 17). `DATABASE_URL` dans `.env.local` (hors git), modèle dans `.env.example`. Rien n'est encore installé côté code (ni Drizzle, ni schéma).
-2. Authentification : Better Auth, e-mail et mot de passe, comptes et sessions dans la base Neon. Fiche 09. Lien magique et réinitialisation du mot de passe reportés jusqu'au choix du service d'envoi d'e-mails.
-
-Spécification `docs/specs/02-inscription-et-connexion.md` rédigée par `chef-de-projet` et **validée** (40 règles, 36 critères, 5 tâches ; T1 à T4 en `opus`). Routes : `/inscription`, `/connexion`, `/tableau-de-bord`. Décisions : pas de nom à l'inscription ; mot de passe de 12 à 128 caractères sans confirmation ; message explicite « adresse déjà utilisée » ; session de 60 jours glissants ; token `error-text` `#B91C1C` ajouté à `DESIGN.md` ; base de test = branche Neon « test » (`DATABASE_URL_TEST` dans `.env.local`). La spécification 01 porte un renvoi vers la 02.
-
-**T1 (socle technique) terminée et commitée** : Drizzle 0.45 et pilote `pg`, Better Auth 1.7, migration `drizzle/0000_comptes_et_sessions.sql` appliquée aux deux bases, `src/db/`, `src/auth/` (`getAuth`, `getCurrentOwner`, `createAccount`, `normalizeEmail`), garde-fou de la base de test, test d'intégration (7 tests). Aucune route `/api/auth` : tout passe par des Server Actions. CA1 à CA6 vérifiés par le développeur puis par l'orchestrateur (pas de passe `qa` : rien à voir dans un navigateur). Commandes ajoutées à `CLAUDE.md`.
-
-Précisions inscrites dans la spécification après T1 : le cookie de session doit être renouvelé à la navigation, à faire en T3 (R16) ; une adresse refusée par Better Auth donne le message E2 (R5) ; ni adresse IP ni agent utilisateur enregistrés avec la session (R17) ; CA22 corrigé à 60 jours.
-
-**T2 (composants de formulaire et page `/inscription`) développée** par `developpeur-front` en `opus` (interrompu une fois par la mise en veille de l'ordinateur, puis repris), vérifiée par l'orchestrateur, pas encore testée, recettée ni commitée : `src/app/(auth)/` (layout commun, `inscription/page.tsx`, `sign-up-form.tsx`, `actions.ts`), `src/components/` (`field`, `password-field`, `submit-button`, `form-message`), règles pures dans `src/auth/sign-up-validation.ts`, `messages.ts`, `form-state.ts`, `/tableau-de-bord` provisoire mais protégée. Build : `○ /inscription`, `◐ /tableau-de-bord`. Correctif dans le socle de T1 : une adresse refusée par Better Auth donnait E8 au lieu de E2. `reuseExistingServer` de Playwright passé à `false`. Fiche 10.
-
-T2 testée par `createur-de-tests` (115 tests Vitest, 9 tests d'intégration, sept mutations détectées) puis recettée par `qa` : **livrable**, CA10 à CA15 et CA31 conformes, 0 violation axe, isolation entre deux comptes vérifiée, formulaire fonctionnel sans JavaScript, aucune redirection ouverte ni fuite du mot de passe. Nouveaux `e2e/inscription.spec.ts` et `e2e/aide-comptes.ts` ; suite e2e à 107 réussis, 3 ignorés (dont un `fixme` par projet à activer en T4 : lien « Se connecter » sans rechargement). Commitée (`70f9eb2`).
-
-**T3 (espace réservé, protection, déconnexion) terminée et commitée** (`4357088`). Fiche 11.
-
-**T4 (page `/connexion`, retour, propriétaire déjà connecté) développée, testée et recettée**, pas encore commitée. Fiche 12.
-
-- `src/app/(auth)/connexion/` (page statique `○`, `sign-in-form.tsx`, `actions.ts`), `src/auth/sign-in.ts`, `sign-in-validation.ts`, `auth-error.ts`, `previous-session.ts`.
-- Le paramètre `retour` est lu par l'action dans l'en-tête `Referer`, puis validé et **reconstruit** par `src/auth/return-path.ts` (R14 précisée).
-- Propriétaire déjà connecté : redirection 307 par le proxy depuis `/connexion` et `/inscription`. Une connexion réussie ferme l'ancienne session du même navigateur (R3 précisée).
-- **Bug bloquant trouvé par la recette et corrigé : redirection ouverte** par `retour=/.//exemple.test` (le routeur client de Next normalisait le chemin en `//exemple.test`). Correctif : forme canonique exigée et destination reconstruite par le serveur ; contre-recette dans le navigateur, aucune valeur ne sort.
-- Journal : le pool `pg` écoute ses erreurs (plus d'exception non rattrapée ni de dump de la connexion).
-- État : lint propre, 1177 tests Vitest, 23 d'intégration, e2e à 187 réussis et 1 ignoré (navigation de l'en-tête sur mobile). Parcours 1 à 4 recettés, 0 violation axe, console vide.
-
-Acceptés dans cette version, à traiter avant toute ouverture au public (Q8) : pas de limitation des tentatives de connexion (60 essais d'affilée acceptés) ; écart de temps de réponse d'environ 25 ms entre adresse inconnue et mot de passe faux ; pas de réinitialisation du mot de passe ni de vérification de l'adresse ; mentions légales.
-
-Limites connues : environ 10 s avant l'écran de panne quand la base ne répond pas du tout ; sans en-tête `Referer`, le retour vers la page demandée est perdu (arrivée sur `/tableau-de-bord`) ; seul Chromium est testé.
-
-Ensuite : commit de T4, puis **T5** (page d'accueil : « Créer mon compte », « Se connecter », adaptation des tests de la fonctionnalité 01), en `sonnet`. Point à surveiller en T5 : un propriétaire connecté sur `/` précharge `/connexion` et `/inscription`, que le proxy redirige ; vérifier la console.
-
-Points laissés ouverts par la recette, à reprendre dans une prochaine spécification :
-
-- Tokens de taille en `px` : agrandir le texte seul dans le navigateur n'a pas d'effet. Envisager `rem`.
-- Seul Chromium est configuré dans Playwright : Safari (flou d'arrière-plan, listes sans puces avec VoiceOver) et Firefox ne sont pas vérifiés.
-- `hover:` de Tailwind 4 est inactif sur écran tactile : les tests de survol vérifient le comportement à la souris.
-- Contraste des couleurs sémantiques (Q5 de la spécification 01) et mentions légales (Q3).
+Avant de lancer : ajuster les prompts des agents (voir « Ensuite »).
 
 ### Ensuite
 
-- Ajuster les prompts des agents selon ce qu'on observe. À faire : dire à `qa` de ranger ses captures hors de `test-results/` (vidé par Playwright), et à tous d'éprouver leurs tests par mutation avec `perl` plutôt que le `sed` de macOS.
-- Quand l'inscription existera : remplacer l'appel à l'action « Voir comment ça marche » par « Créer mon compte » et retirer la section « Les inscriptions ouvrent bientôt » (R18 de la spécification 01).
-- Choix techniques à expliquer et décider le moment venu : base de données, authentification, génération de PDF, envoi d'e-mails, tâches planifiées.
+- **Prompts des agents à ajuster**, d'après les deux premières fonctionnalités : `qa` et `developpeur-front` rangent leurs scripts et captures dans un dossier à leur nom hors du dépôt et hors de `test-results/` (vidé par Playwright ; un script partagé a déjà été écrasé par un autre agent) ; tous éprouvent leurs tests par mutation avec `perl` plutôt que le `sed` de macOS et contrôlent que la mutation a modifié le fichier ; comptes rendus plus courts pour le développeur ; rappel de ne jamais afficher un secret ou un cookie.
+- **Avant toute ouverture au public** (Q8 de la spécification 02) : limitation des tentatives de connexion et d'inscription ; réinitialisation du mot de passe et vérification de l'adresse (demandent le service d'envoi d'e-mails) ; écart de temps de réponse entre adresse inconnue et mot de passe faux ; mentions légales et information sur les données personnelles ; suppression de compte.
+- **Limites connues** : environ 10 s avant l'écran de panne quand la base ne répond pas du tout (proxy puis page, 5 s chacun) ; sans en-tête `Referer`, le retour vers la page demandée est perdu ; sans JavaScript, une déconnexion pendant une panne de base affiche « Internal Server Error » ; avertissement `sslmode` du pilote `pg` au démarrage.
+- **Reportés de la fonctionnalité 01** : tokens de taille en `px` (agrandir le texte seul dans le navigateur n'a pas d'effet, envisager `rem`) ; seul Chromium est configuré dans Playwright (Safari, Firefox et un vrai téléphone ne sont pas vérifiés) ; `hover:` de Tailwind 4 inactif sur écran tactile ; contraste des couleurs sémantiques `success` et `warning` pour du texte (à traiter avec les statuts de loyer).
+- Choix techniques à expliquer et décider le moment venu : génération de PDF, envoi d'e-mails, tâches planifiées.
+- Le nom du propriétaire n'est pas demandé à l'inscription : à ajouter quand les quittances en auront besoin.
+- Les comptes `@quittances.test` de la base de test peuvent être purgés à tout moment ; chaque exécution de `pnpm test:e2e` en crée.
 
 ## Décisions prises
 

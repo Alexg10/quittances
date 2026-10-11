@@ -1,6 +1,10 @@
 // Page d'accueil publique : Server Component statique, sans JavaScript côté navigateur.
 // Le lien d'évitement et l'en-tête appartiennent à cette page, pas au layout racine (R13).
 
+import Link from "next/link";
+
+import { SECONDARY_BUTTON_CLASSES } from "@/components/button-styles";
+
 import { LogoLink } from "./logo-link";
 
 const steps = [
@@ -55,27 +59,34 @@ export default function Home() {
       <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-border bg-surface/80 backdrop-blur">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
           <LogoLink />
-          {/* Dans le DOM à toutes les largeurs ; display:none sous 768px la retire de l'affichage et de la tabulation. */}
-          <nav aria-label="Navigation principale" className="hidden md:block">
-            <ul className="flex items-center gap-2">
-              <li>
-                <a
-                  href="#fonctionnement"
-                  className="rounded-md px-3 py-2 text-sm font-medium hover:bg-border"
-                >
-                  Fonctionnement
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#fonctionnalites"
-                  className="rounded-md px-3 py-2 text-sm font-medium hover:bg-border"
-                >
-                  Fonctionnalités
-                </a>
-              </li>
-            </ul>
-          </nav>
+          {/* Navigation et lien de connexion groupés à droite. */}
+          <div className="flex items-center gap-2">
+            {/* Dans le DOM à toutes les largeurs ; display:none sous 768px la retire de l'affichage et de la tabulation. */}
+            <nav aria-label="Navigation principale" className="hidden md:block">
+              <ul className="flex items-center gap-2">
+                <li>
+                  <a
+                    href="#fonctionnement"
+                    className="rounded-md px-3 py-2 text-sm font-medium hover:bg-border"
+                  >
+                    Fonctionnement
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#fonctionnalites"
+                    className="rounded-md px-3 py-2 text-sm font-medium hover:bg-border"
+                  >
+                    Fonctionnalités
+                  </a>
+                </li>
+              </ul>
+            </nav>
+            {/* Hors de la navigation : un lien d'action, visible à toutes les largeurs. */}
+            <Link href="/connexion" className={SECONDARY_BUTTON_CLASSES}>
+              Se connecter
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -95,12 +106,12 @@ export default function Home() {
             loyer est arrivé. Vous confirmez, la quittance PDF part chez votre
             locataire. Sinon, il reçoit une relance.
           </p>
-          <a
-            href="#fonctionnement"
+          <Link
+            href="/inscription"
             className="inline-flex h-11 items-center rounded-md bg-primary px-6 text-body font-medium text-surface transition-[background-color,translate] duration-200 hover:bg-primary-hover hover:shadow-primary-glow motion-safe:hover:-translate-y-px motion-reduce:duration-0"
           >
-            Voir comment ça marche
-          </a>
+            Créer mon compte
+          </Link>
         </section>
 
         <section
@@ -153,20 +164,6 @@ export default function Home() {
               </li>
             ))}
           </ul>
-        </section>
-
-        <section
-          id="inscriptions"
-          aria-labelledby="titre-inscriptions"
-          className="flex flex-col gap-6"
-        >
-          <h2 id="titre-inscriptions" className={h2Classes}>
-            Les inscriptions ouvrent bientôt
-          </h2>
-          <p className="text-text-secondary">
-            Quittances est en cours de développement. La création de compte
-            n&apos;est pas encore disponible.
-          </p>
         </section>
       </main>
 

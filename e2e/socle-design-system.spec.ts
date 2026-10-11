@@ -109,6 +109,7 @@ test.describe("Socle du design system", () => {
       success: "#10B981",
       warning: "#F59E0B",
       error: "#EF4444",
+      "error-text": "#B91C1C",
     };
     for (const [nom, attendu] of Object.entries(couleurs)) {
       const lue = await variable(page, `--color-${nom}`);
