@@ -16,8 +16,10 @@ Interface de gestion pour propriétaires bailleurs : suivre ses locations, confi
 - **Text Primary** (#0A0A0A): titres, texte courant, montants
 - **Text Secondary** (#6B6B6B): descriptions, dates, libellés secondaires
 - **Border** (#E8E8EC): bordures de cartes, séparateurs, bordures de champs
-- **Success** (#10B981): loyer payé, quittance envoyée, confirmations
-- **Warning** (#F59E0B): loyer en attente de confirmation, paiement partiel
+- **Success** (#10B981): loyer payé, quittance envoyée, confirmations — bordures et pictogrammes seulement, jamais du texte
+- **Success Text** (#047857) sur **Success Surface** (#ECFDF5): texte et fond d'un chip de statut positif (5.48:1 sur blanc)
+- **Warning** (#F59E0B): loyer en attente de confirmation, paiement partiel — bordures et pictogrammes seulement, jamais du texte
+- **Warning Text** (#B45309) sur **Warning Surface** (#FFFBEB): texte et fond d'un chip de statut d'attente (5.02:1 sur blanc)
 - **Error** (#EF4444): loyer en retard, actions destructrices, erreurs de validation — bordures et fonds teintés seulement, jamais du texte (3.76:1 sur blanc)
 - **Error Text** (#B91C1C): texte des messages d'erreur (6.47:1 sur blanc)
 

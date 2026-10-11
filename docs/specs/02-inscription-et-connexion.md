@@ -2,6 +2,8 @@
 
 Statut : validée par l'utilisateur le 2026-10-10. Questions tranchées : Q1 (branche Neon « test », variable `DATABASE_URL_TEST`), Q2 (pas de nom à l'inscription), Q3 (token `error-text` `#B91C1C`, ajouté à `DESIGN.md`), Q4 (message explicite E3), Q5 et Q6 (12 à 128 caractères, sans confirmation), Q7 (**60 jours** glissants au lieu de 30). Q8 à Q10 restent telles que recommandées.
 
+**Modifiée par la spécification 03** : le contenu de `/tableau-de-bord` (il devient la liste des locations) et son état vide changent. Voir la section « Effet sur la spécification 02 et sur les tests existants » de `docs/specs/03-gestion-des-locations.md`, qui prime sur ce document pour ces points.
+
 Références : `CLAUDE.md` (produit), `DESIGN.md` (design system), `docs/AVANCEMENT.md` (décisions), `docs/specs/01-accueil-et-design-system.md` (socle et page d'accueil, dont cette spécification modifie une partie, voir « Effet sur la spécification 01 »), `docs/fiches/08-base-de-donnees.md` et `docs/fiches/09-authentification.md` (choix techniques).
 
 Décisions de l'utilisateur, non rediscutées ici : Postgres chez Neon avec Drizzle ; Better Auth, e-mail et mot de passe, session en base et cookie `httpOnly` ; aucun envoi d'e-mail dans cette version ; toute route interne passe par `next/link` ; thème clair, textes en français.

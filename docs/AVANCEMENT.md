@@ -39,13 +39,29 @@ Dernière mise à jour : 2026-10-10
 
 ### Prochaine étape
 
-Choisir la **troisième fonctionnalité** et la confier au `chef-de-projet`. Suggestion : **gestion des locations** (créer, modifier, lister ses locations : bien, locataire et son e-mail, montant du loyer et des charges, jour d'échéance). C'est la première donnée métier, donc la première vraie mise à l'épreuve de l'isolation entre comptes (R2 de la spécification 02), et elle ne demande aucun nouveau choix technique. Les quittances PDF, l'envoi d'e-mails et les tâches planifiées viendront ensuite et s'appuieront dessus.
+Fonctionnalité 03 : **gestion des locations** (branche `gestion-des-locations`) : créer, lister, consulter, modifier et retirer ses locations (bien, locataire et son e-mail, loyer et charges, jour d'échéance). Première donnée métier, donc première mise à l'épreuve de l'isolation entre comptes. Aucun nouveau choix technique.
 
-Avant de lancer : ajuster les prompts des agents (voir « Ensuite »).
+Spécification `docs/specs/03-gestion-des-locations.md` rédigée par `chef-de-projet` et **validée** : 44 règles, 43 critères, 6 tâches. Le tableau de bord devient la liste des locations ; six routes sous `/locations`. Aucun calcul d'échéance dans cette version. Décisions : dix informations par location, un seul locataire, adresses françaises, supprimer efface et mettre fin archive (« Rouvrir »), limite de 100 locations par compte, **option légère** (ni clé de soumission ni numéro de version : doublon possible sans JavaScript, dernier enregistrement qui l'emporte), tokens `success-text`, `success-surface`, `warning-text`, `warning-surface` ajoutés à `DESIGN.md`.
+
+| Tâche | Contenu | Modèle | Recette `qa` |
+| --- | --- | --- | --- |
+| T1 | Schéma, migration, fonctions d'accès filtrées par propriétaire | opus | non (pas d'interface) |
+| T2 | Règles pures : montants, jour d'échéance, dates, statut | sonnet | non |
+| T3 | Tableau de bord, liste, chip de statut, tests existants à adapter | sonnet | non |
+| T4 | Formulaire de location (affichage seul) | sonnet | non |
+| T5 | Création, détail, « introuvable », protection | opus | oui |
+| T6 | Modification, fin, réouverture, suppression | opus | oui, recette complète |
+
+**Rythme allégé**, décidé par l'utilisateur le 2026-10-11 : recette `qa` après T5 et à la fin seulement ; après chaque agent, l'orchestrateur ne relance que le lint et les tests rapides, et les tests e2e complets une fois avant chaque commit ; mutations réservées à l'isolation et aux montants ; `opus` pour T1, T5 et T6 seulement.
+
+**T1 terminée et commitée** : table `rental` (migration `drizzle/0001_locations.sql`, appliquée aux deux bases), sept fonctions d'accès dans `src/rentals/rental-store.ts`, toutes filtrées sur le propriétaire dans la requête SQL, `src/rentals/rental-id.ts`, 39 tests d'intégration à deux comptes (62 au total). Aucun accès à la table hors de ces fonctions. Reste à faire écrire par `createur-de-tests`, avec T2 : le test unitaire de `isRentalId` et une relecture des tests d'isolation.
+
+Étape en cours : **T2** (règles pures) chez `developpeur-front` en `sonnet`, puis `createur-de-tests`.
+
+Prompts des quatre agents ajustés avant de lancer (`02eade7`) : secrets, base de test et ports ; dossier de travail propre à chaque agent ; mutations avec `perl` ; liens internes en `next/link` ; critère d'isolation négatif dans chaque spécification.
 
 ### Ensuite
 
-- **Prompts des agents à ajuster**, d'après les deux premières fonctionnalités : `qa` et `developpeur-front` rangent leurs scripts et captures dans un dossier à leur nom hors du dépôt et hors de `test-results/` (vidé par Playwright ; un script partagé a déjà été écrasé par un autre agent) ; tous éprouvent leurs tests par mutation avec `perl` plutôt que le `sed` de macOS et contrôlent que la mutation a modifié le fichier ; comptes rendus plus courts pour le développeur ; rappel de ne jamais afficher un secret ou un cookie.
 - **Avant toute ouverture au public** (Q8 de la spécification 02) : limitation des tentatives de connexion et d'inscription ; réinitialisation du mot de passe et vérification de l'adresse (demandent le service d'envoi d'e-mails) ; écart de temps de réponse entre adresse inconnue et mot de passe faux ; mentions légales et information sur les données personnelles ; suppression de compte.
 - **Limites connues** : environ 10 s avant l'écran de panne quand la base ne répond pas du tout (proxy puis page, 5 s chacun) ; sans en-tête `Referer`, le retour vers la page demandée est perdu ; sans JavaScript, une déconnexion pendant une panne de base affiche « Internal Server Error » ; avertissement `sslmode` du pilote `pg` au démarrage.
 - **Reportés de la fonctionnalité 01** : tokens de taille en `px` (agrandir le texte seul dans le navigateur n'a pas d'effet, envisager `rem`) ; seul Chromium est configuré dans Playwright (Safari, Firefox et un vrai téléphone ne sont pas vérifiés) ; `hover:` de Tailwind 4 inactif sur écran tactile ; contraste des couleurs sémantiques `success` et `warning` pour du texte (à traiter avec les statuts de loyer).
@@ -66,6 +82,7 @@ Avant de lancer : ajuster les prompts des agents (voir « Ensuite »).
 - Authentification : Better Auth, e-mail et mot de passe ; les comptes et les sessions vivent dans la base du projet.
 - Base Neon en région Europe (Francfort).
 - Les routes internes passent par `next/link`, jamais par un `<a>` natif : pas de rechargement complet de la page.
+- Rythme allégé à partir de la fonctionnalité 03 : recette `qa` à la première tranche de bout en bout et à la fin, pas après chaque tâche ; e2e complets une fois avant chaque commit.
 - Agents de développement en `sonnet` par défaut ; l'orchestrateur demande `opus` à l'appel pour les tâches difficiles (authentification, isolation des données, logique de dates).
 
 ## Notions déjà vues (fiches)
