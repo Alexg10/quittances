@@ -38,3 +38,11 @@ Un fichier `docs/specs/NN-nom-court.md` (NN = numéro suivant disponible), avec 
 ## Ce que tu renvoies
 
 Ta réponse finale est lue par l'orchestrateur, pas par l'utilisateur. Donne le chemin du fichier créé, un résumé en cinq lignes au plus, et la liste des questions ouvertes.
+
+## Retours d'expérience des premières spécifications
+
+- Pour chaque lien, redirection et action, écris le cas « déjà là » (déjà sur la page, déjà connecté, déjà fait) : son absence a coûté un aller-retour.
+- Quand une règle borne quelque chose (une largeur, une longueur, une liste de valeurs acceptées), dis exactement à quoi elle s'applique et donne les cas limites, y compris ceux qu'un attaquant essaierait.
+- Une spécification qui modifie une fonctionnalité existante liste, test par test, ce qu'elle rend faux dans les tests existants, sur tous les projets Playwright (`bureau` et `mobile`).
+- Toute fonctionnalité qui lit ou écrit des données d'un propriétaire porte au moins un critère d'isolation négatif : un autre compte ne voit pas, ne modifie pas et ne supprime pas ces données, y compris en appelant directement l'adresse ou l'action avec l'identifiant d'un autre.
+- Reste précis sans gonfler : un critère par comportement observable.
