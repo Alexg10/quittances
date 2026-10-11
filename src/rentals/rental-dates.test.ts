@@ -10,6 +10,7 @@ import {
   parseDateInput,
   parseEndDateInput,
   RENTAL_STATUS_LABELS,
+  toDateInputValue,
 } from "./rental-dates";
 
 const ok = (value: string) => ({ ok: true, value });
@@ -369,4 +370,73 @@ describe("getTodayInParis (R20)", () => {
       expect(getTodayInParis(new Date(instant))).toBe(date);
     }
   });
+});
+
+// Valeur donnée à un champ <input type="date"> quand on réaffiche une saisie.
+// Source : note de tête de la spécification 03 (« après L20, il revient vide, le
+// message restant affiché ») et R19. CA36 demande que la valeur « soit conservée »
+// pour 2100-01-01 (L21) : une date réelle hors bornes reste donc affichée.
+describe("toDateInputValue (R19, note de tête, CA24, CA36)", () => {
+  it.each(["2026-01-05", "2028-02-29", "2000-02-29", "1950-01-01", "2099-12-31"])(
+    "R19 — la date valide %s est rendue telle quelle",
+    (date) => {
+      expect(toDateInputValue(date)).toBe(date);
+    },
+  );
+
+  it.each([
+    ["chaîne vide", ""],
+    ["espaces seules", "   "],
+    ["espace autour d'une date valide", " 2026-01-05 "],
+  ])("CA24 — %s : champ vide", (_nom, saisie) => {
+    expect(toDateInputValue(saisie)).toBe("");
+  });
+
+  it.each(["05/01/2026", "2026-1-5", "26-01-05", "20260105", "demain"])(
+    "R19 — le format %s (L20) : champ vide",
+    (saisie) => {
+      expect(toDateInputValue(saisie)).toBe("");
+    },
+  );
+
+  it("R19 — une date avec heure (2026-01-05T00:00, L20) : champ vide", () => {
+    expect(toDateInputValue("2026-01-05T00:00")).toBe("");
+  });
+
+  it.each([
+    ["30 février", "2026-02-30"],
+    ["29 février d'une année non bissextile", "2027-02-29"],
+    ["31 avril", "2026-04-31"],
+    ["mois 13", "2026-13-01"],
+    ["mois 00", "2026-00-10"],
+    ["jour 0", "2026-01-00"],
+  ])("R19 — %s (L20) : champ vide", (_nom, saisie) => {
+    expect(toDateInputValue(saisie)).toBe("");
+  });
+
+  it("R19 — 1900 n'est pas bissextile (siècle) : 1900-02-29 est vidée", () => {
+    expect(toDateInputValue("1900-02-29")).toBe("");
+  });
+
+  it("R19 — 2000 est bissextile : 2000-02-29 est conservée", () => {
+    expect(toDateInputValue("2000-02-29")).toBe("2000-02-29");
+  });
+
+  it("R19 — 1900-02-28 existe : conservée (hors bornes, L21)", () => {
+    expect(toDateInputValue("1900-02-28")).toBe("1900-02-28");
+  });
+
+  it("note de tête — l'année 0000 n'existe pas pour un champ de date : vidée", () => {
+    expect(toDateInputValue("0000-01-01")).toBe("");
+  });
+
+  // La spécification ne dit pas ce que le champ affiche pour une date réelle
+  // hors bornes ; CA36 dit seulement « la valeur saisie est conservée » pour
+  // 2100-01-01. On fige donc : conservée, le message L21 expliquant l'erreur.
+  it.each(["1949-12-31", "2100-01-01", "9999-12-31"])(
+    "CA36 — la date réelle hors bornes %s (L21) est conservée",
+    (date) => {
+      expect(toDateInputValue(date)).toBe(date);
+    },
+  );
 });

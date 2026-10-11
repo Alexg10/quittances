@@ -18,3 +18,10 @@ export const DESTRUCTIVE_BUTTON_SMALL_CLASSES =
 // change de page est un lien, même quand il ressemble à un bouton (R40).
 export const PRIMARY_BUTTON_LINK_CLASSES =
   "inline-flex h-11 items-center justify-center rounded-md bg-primary px-6 text-body font-medium text-surface transition-[background-color,translate] duration-200 hover:bg-primary-hover hover:shadow-primary-glow motion-safe:hover:-translate-y-px motion-reduce:duration-0";
+
+// Apparence destructive, grande taille (R40 de la spécification 03) : 44px de
+// haut, sur toute la largeur du formulaire, mêmes couleurs que la petite.
+// Réservée au bouton « Supprimer définitivement ». En attente (disabled), les
+// effets de survol sont coupés et l'opacité baisse, comme pour SubmitButton.
+export const DESTRUCTIVE_BUTTON_LARGE_CLASSES =
+  "inline-flex h-11 w-full items-center justify-center rounded-md border border-error px-6 text-body font-medium text-error-text transition-[border-color,translate] duration-200 enabled:hover:border-error-text motion-safe:enabled:hover:-translate-y-px disabled:opacity-60 motion-reduce:duration-0";

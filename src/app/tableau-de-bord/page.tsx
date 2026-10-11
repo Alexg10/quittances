@@ -11,6 +11,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect, unstable_rethrow } from "next/navigation";
+import { cache } from "react";
 
 import { getCurrentOwner, type Owner } from "@/auth/current-owner";
 import { PRIMARY_BUTTON_LINK_CLASSES } from "@/components/button-styles";
@@ -131,9 +132,10 @@ export default async function DashboardPage({
 // Le propriétaire courant, null sans session, ou "unavailable" si la session
 // n'a pas pu être vérifiée (base injoignable). Une panne est un cas attendu :
 // elle est rendue comme un état de la page, pas comme une exception.
-// getCurrentOwner() est mémorisée le temps de la requête : generateMetadata et
-// la page partagent une seule lecture en base.
-async function readOwner(): Promise<Owner | null | "unavailable"> {
+// `cache` de React garde le résultat le temps d'une requête : generateMetadata
+// et la page partagent un seul appel, donc une seule ligne de journal en cas de
+// panne. Rien n'est conservé d'une requête à l'autre ni d'un compte à l'autre.
+const readOwner = cache(async (): Promise<Owner | null | "unavailable"> => {
   try {
     return await getCurrentOwner();
   } catch (error) {
@@ -148,7 +150,7 @@ async function readOwner(): Promise<Owner | null | "unavailable"> {
     );
     return "unavailable";
   }
-}
+});
 
 // Les locations du propriétaire courant, ou "unavailable" si la base ne répond
 // pas. Une RentalStoreError est une panne attendue : un état de la page. Toute

@@ -17,6 +17,7 @@
 import Link from "next/link";
 import { useRef } from "react";
 
+import { toDateInputValue } from "@/rentals/rental-dates";
 import {
   RENTAL_FORM_GROUPS,
   type RentalFormFieldSpec,
@@ -101,6 +102,10 @@ type RentalFormFieldProps = {
 
 function RentalFormField({ spec, state }: RentalFormFieldProps) {
   const errorCode = state.errors[spec.name];
+  const value = state.fields[spec.name];
+  // Un champ de date ne sait afficher qu'une date qui existe : toute autre
+  // valeur est remplacée par un champ vide (voir toDateInputValue).
+  const defaultValue = spec.type === "date" ? toDateInputValue(value) : value;
 
   return (
     <Field
@@ -117,7 +122,7 @@ function RentalFormField({ spec, state }: RentalFormFieldProps) {
       required={spec.required}
       // Champ non contrôlé : après la réponse, React remet le champ à cette
       // valeur, c'est-à-dire à ce que l'utilisateur avait saisi.
-      defaultValue={state.fields[spec.name]}
+      defaultValue={defaultValue}
       error={errorCode ? rentalErrorMessage(errorCode) : undefined}
       hint={spec.hint}
     />

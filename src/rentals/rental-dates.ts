@@ -49,6 +49,19 @@ export function parseDateInput(
   return { ok: true, value: input };
 }
 
+// Valeur à donner à un champ <input type="date"> quand on réaffiche une saisie.
+// Le navigateur n'accepte qu'un jour qui existe, écrit « AAAA-MM-JJ » : pour
+// toute autre valeur (« 2026-02-30 », « demain »), il laisse le champ vide et
+// écrit un avertissement dans la console. On rend donc "" dans ce cas, et le
+// message L20 reste affiché sous le champ. Une date hors bornes (L21) est un
+// vrai jour : elle est conservée, pour que l'utilisateur voie ce qu'il a saisi.
+// L'année 0000 passe la forme mais n'existe pas pour le navigateur.
+export function toDateInputValue(input: string): string {
+  const parsed = parseDateInput(input, "start");
+  const isRealDay = parsed.ok || parsed.error === "L21";
+  return isRealDay && !input.startsWith("0000-") ? input : "";
+}
+
 // Date de fin (R21) : lue comme une date, puis comparée à la date de début.
 // Égale au début, elle est acceptée (bail d'un jour) ; avant, L24.
 export function parseEndDateInput(

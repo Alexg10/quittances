@@ -500,3 +500,83 @@ describe("RentalForm — envoi, attente, annulation (R32, R34)", () => {
     expect(action).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("RentalForm — champ de date réaffiché (note de tête, R34, CA24)", () => {
+  const MESSAGE_L20 = "Saisissez une date valide.";
+
+  it("CA24 — après L20 sur une date inexistante : le champ est vide, le message reste affiché et relié au champ", () => {
+    setup({
+      state: {
+        fields: { ...FILLED.fields, startDate: "2026-02-30" },
+        errors: { startDate: "L20" },
+      },
+    });
+
+    const date = field("Date de début du bail");
+    expect(date).toHaveValue("");
+    expect(date).toHaveAttribute("aria-invalid", "true");
+    expect(date).toHaveAccessibleDescription(MESSAGE_L20);
+    expect(screen.getByText(MESSAGE_L20)).toBeInTheDocument();
+  });
+
+  it("CA24 — après L20 sur un format refusé (05/01/2026) : le champ est vide", () => {
+    setup({
+      state: {
+        fields: { ...FILLED.fields, startDate: "05/01/2026" },
+        errors: { startDate: "L20" },
+      },
+    });
+
+    expect(field("Date de début du bail")).toHaveValue("");
+    expect(field("Date de début du bail")).toHaveAccessibleDescription(MESSAGE_L20);
+  });
+
+  it("CA24 — après L20, les autres valeurs saisies sont conservées", () => {
+    setup({
+      state: {
+        fields: { ...FILLED.fields, startDate: "2026-02-30" },
+        errors: { startDate: "L20" },
+      },
+    });
+
+    expect(field("Adresse")).toHaveValue("12 rue des Lilas");
+    expect(field("Charges")).toHaveValue("1250,50");
+  });
+
+  it("R34 — après L20, le focus va sur le champ de date", () => {
+    setup({
+      state: {
+        fields: { ...FILLED.fields, startDate: "2026-02-30" },
+        errors: { startDate: "L20" },
+      },
+    });
+
+    expect(field("Date de début du bail")).toHaveFocus();
+  });
+
+  it("R34 — une date valide est conservée quand un autre champ est en erreur", () => {
+    setup({
+      state: {
+        fields: { ...FILLED.fields, city: "" },
+        errors: { city: "L6" },
+      },
+    });
+
+    expect(field("Date de début du bail")).toHaveValue("2026-01-05");
+    expect(field("Date de début du bail")).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("CA36 — une date réelle hors bornes (L21) est conservée avec son message", () => {
+    setup({
+      state: {
+        fields: { ...FILLED.fields, startDate: "2100-01-01" },
+        errors: { startDate: "L21" },
+      },
+    });
+
+    expect(field("Date de début du bail")).toHaveValue("2100-01-01");
+    expect(field("Date de début du bail")).toHaveAccessibleDescription(
+      "La date doit être comprise entre le 1er janvier 1950 et le 31 décembre 2099.",
+    );
+  });
+});
