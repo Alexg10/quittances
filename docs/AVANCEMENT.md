@@ -54,9 +54,11 @@ Spécification `docs/specs/03-gestion-des-locations.md` rédigée par `chef-de-p
 
 **Rythme allégé**, décidé par l'utilisateur le 2026-10-11 : recette `qa` après T5 et à la fin seulement ; après chaque agent, l'orchestrateur ne relance que le lint et les tests rapides, et les tests e2e complets une fois avant chaque commit ; mutations réservées à l'isolation et aux montants ; `opus` pour T1, T5 et T6 seulement.
 
-**T1 terminée et commitée** : table `rental` (migration `drizzle/0001_locations.sql`, appliquée aux deux bases), sept fonctions d'accès dans `src/rentals/rental-store.ts`, toutes filtrées sur le propriétaire dans la requête SQL, `src/rentals/rental-id.ts`, 39 tests d'intégration à deux comptes (62 au total). Aucun accès à la table hors de ces fonctions. Reste à faire écrire par `createur-de-tests`, avec T2 : le test unitaire de `isRentalId` et une relecture des tests d'isolation.
+**T1 terminée et commitée** : table `rental` (migration `drizzle/0001_locations.sql`, appliquée aux deux bases), sept fonctions d'accès dans `src/rentals/rental-store.ts`, toutes filtrées sur le propriétaire dans la requête SQL, `src/rentals/rental-id.ts`, 39 tests d'intégration à deux comptes (62 au total). Aucun accès à la table hors de ces fonctions. 
 
-Étape en cours : **T2** (règles pures) chez `developpeur-front` en `sonnet`, puis `createur-de-tests`.
+**T2 terminée et commitée** : règles pures dans `src/rentals/` (`rental-amount`, `rental-dates`, `rental-due-day`, `rental-text`, `rental-messages`, `rental-validation`), sans import serveur ; 860 tests Vitest ajoutés (2027 au total), identiques sous trois fuseaux horaires ; mutations sur les montants détectées. Ambiguïtés de la spécification laissées en l'état : date faite d'espaces (L20), plus de 500 espaces dans un montant, UUID d'une autre version que 4 accepté par `isRentalId`.
+
+Étape en cours : **T3** (tableau de bord, liste, chip de statut, adaptation des tests existants) chez `developpeur-front` en `sonnet`, puis `createur-de-tests`. Pas de recette avant T5.
 
 Prompts des quatre agents ajustés avant de lancer (`02eade7`) : secrets, base de test et ports ; dossier de travail propre à chaque agent ; mutations avec `perl` ; liens internes en `next/link` ; critère d'isolation négatif dans chaque spécification.
 
