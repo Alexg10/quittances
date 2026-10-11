@@ -52,6 +52,7 @@ describe("ServiceUnavailable (écran de panne)", () => {
     expect(screen.queryByText(/Tableau de bord$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Connecté en tant que/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Aucune location/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Ajouter une location")).not.toBeInTheDocument();
     expect(screen.queryByText(/@/)).not.toBeInTheDocument();
   });
 

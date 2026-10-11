@@ -6,3 +6,15 @@
 // (« Se déconnecter », « Réessayer ») comme un lien.
 export const SECONDARY_BUTTON_CLASSES =
   "inline-flex h-8 items-center rounded-md border border-border px-3 text-sm font-medium text-text-primary transition-[background-color,translate] duration-200 hover:bg-border motion-safe:hover:-translate-y-px motion-reduce:duration-0";
+
+// Apparence destructive, petite taille (R40 de la spécification 03) : mêmes
+// dimensions que le bouton secondaire, bordure `error`, texte `error-text` (le
+// rouge `error` ne suffit pas pour du texte). Au survol, la bordure fonce.
+export const DESTRUCTIVE_BUTTON_SMALL_CLASSES =
+  "inline-flex h-8 items-center rounded-md border border-error px-3 text-sm font-medium text-error-text transition-[border-color,translate] duration-200 hover:border-error-text motion-safe:hover:-translate-y-px motion-reduce:duration-0";
+
+// Bouton primaire, grande taille (44px) : même apparence que SubmitButton, pour
+// un lien qui mène à une autre page (« Ajouter une location »). Un élément qui
+// change de page est un lien, même quand il ressemble à un bouton (R40).
+export const PRIMARY_BUTTON_LINK_CLASSES =
+  "inline-flex h-11 items-center justify-center rounded-md bg-primary px-6 text-body font-medium text-surface transition-[background-color,translate] duration-200 hover:bg-primary-hover hover:shadow-primary-glow motion-safe:hover:-translate-y-px motion-reduce:duration-0";

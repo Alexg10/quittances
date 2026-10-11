@@ -44,7 +44,7 @@ const lireTemoin = (page: Page) =>
   page.evaluate(() => (window as unknown as { __temoin?: string }).__temoin);
 
 test.describe("Espace réservé", () => {
-  test("CA16 : contenus, un seul lien (le logo) et un seul bouton", async ({ page }) => {
+  test("CA16 : contenus, deux liens (le logo et Ajouter une location) et un seul bouton", async ({ page }) => {
     const { email } = await inscrire(page);
     await ouvrirTableauDeBord(page);
     await expect(page).toHaveTitle("Tableau de bord — Quittances");
@@ -54,14 +54,17 @@ test.describe("Espace réservé", () => {
       "Aucune location pour l'instant",
     );
     await expect(
-      page.getByText("L'ajout de locations arrivera dans une prochaine version."),
+      page.getByText("Ajoutez votre première location pour préparer vos quittances."),
     ).toBeVisible();
     await expect(page.getByRole("banner")).toHaveCount(1);
     await expect(page.getByRole("main")).toHaveCount(1);
-    const liens = page.getByRole("link");
-    await expect(liens).toHaveCount(1);
-    await expect(liens).toHaveAccessibleName("Quittances, tableau de bord");
-    await expect(liens).toHaveAttribute("href", "/tableau-de-bord");
+    await expect(page.getByRole("link")).toHaveCount(2);
+    const logo = page.getByRole("link", { name: "Quittances, tableau de bord" });
+    await expect(logo).toHaveCount(1);
+    await expect(logo).toHaveAttribute("href", "/tableau-de-bord");
+    const ajout = page.getByRole("link", { name: "Ajouter une location" });
+    await expect(ajout).toHaveCount(1);
+    await expect(ajout).toHaveAttribute("href", "/locations/nouvelle");
     await expect(page.getByRole("button")).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible();
     // Pas d'état de chargement : la page arrive d'un bloc.

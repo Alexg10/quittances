@@ -25,6 +25,12 @@
   --color-error: #ef4444;
   /* Texte d'erreur (R31 de la spécification 02) : `error` ne suffit pas pour du texte. */
   --color-error-text: #b91c1c;
+  /* Texte et fond teinté des chips de statut (R38 de la spécification 03) :
+     `success` et `warning` ne suffisent pas pour du texte (contraste < 4.5:1). */
+  --color-success-text: #047857;
+  --color-success-surface: #ecfdf5;
+  --color-warning-text: #b45309;
+  --color-warning-surface: #fffbeb;
 
   /* Polices (R3) : les variables --font-*-face sont posées par next/font dans le layout. */
   --font-display: var(--font-display-face);

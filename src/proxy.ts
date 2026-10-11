@@ -7,10 +7,14 @@
 // 2. Rediriger tôt vers /connexion un visiteur sans session qui demande une
 //    page protégée (R23).
 // 3. Rediriger vers /tableau-de-bord un propriétaire déjà connecté qui demande
-//    /connexion ou /inscription (R22).
+//    /connexion ou /inscription (R22), ou /locations, qui n'a pas de contenu
+//    (R27 de la spécification 03).
 //
-// Les deux redirections sont un confort : faites ici, ce sont de vraies
+// Ces redirections sont un confort : faites ici, ce sont de vraies
 // réponses HTTP, qui fonctionnent sans JavaScript et n'envoient aucun contenu.
+//
+// Il refuse aussi, par un code 400, une adresse illisible sous /locations/
+// (voir isDecodable).
 //
 // La protection réelle reste dans chaque page et chaque Server Action, qui
 // appellent getCurrentOwner(). Si ce fichier était supprimé ou si son `matcher`
@@ -34,10 +38,25 @@ import {
 // le `matcher`.
 const PUBLIC_PATHS = [SIGN_IN_PATH, SIGN_UP_PATH];
 
+// La liste des locations est le tableau de bord : cette adresse y renvoie.
+const RENTALS_PATH = "/locations";
+
 function isProtectedPath(pathname: string): boolean {
   return !PUBLIC_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
+}
+
+// Faux pour un chemin dont l'encodage est invalide (« /locations/% »). Next ne
+// sait pas en tirer la valeur du segment [id] : il répondrait par une erreur
+// 500 avant d'avoir exécuté la page (mesuré sur cette version).
+function isDecodable(pathname: string): boolean {
+  try {
+    decodeURIComponent(pathname);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function proxy(request: NextRequest) {
@@ -62,6 +81,19 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(
         new URL(buildSignInPath(pathname, search), request.url),
       );
+    }
+    // /locations, pour un propriétaire connecté : le tableau de bord. La page
+    // fait la même redirection, mais la sienne a besoin de JavaScript ; celle-ci
+    // est une réponse HTTP. Seule l'adresse exacte est concernée : le proxy ne
+    // regarde jamais ce qui suit /locations/.
+    if (session === "valid" && pathname === RENTALS_PATH) {
+      return NextResponse.redirect(new URL(DASHBOARD_PATH, request.url));
+    }
+    // Adresse illisible sous /locations/ : 400 « requête incorrecte », sans
+    // contenu, plutôt que l'erreur 500 de Next. Le proxy ne juge ici que la
+    // forme de l'adresse : la réponse est la même qu'une location existe ou non.
+    if (pathname.startsWith(`${RENTALS_PATH}/`) && !isDecodable(pathname)) {
+      return new NextResponse(null, { status: 400 });
     }
     return NextResponse.next();
   }
@@ -89,5 +121,15 @@ export const config = {
   // ne rendrait rien visible : la page reste protégée par getCurrentOwner().
   // Elle y perdrait seulement la redirection sans JavaScript et la
   // prolongation de la session pendant qu'on la consulte.
-  matcher: ["/tableau-de-bord/:path*", "/connexion", "/inscription"],
+  //
+  // "/locations/:path*" couvre /locations et tout ce qui est dessous (R28 de la
+  // spécification 03), que l'adresse existe ou non. Le proxy n'y lit que la
+  // session : jamais une location, jamais l'identifiant de l'adresse. Savoir à
+  // qui appartient une location reste l'affaire de la page.
+  matcher: [
+    "/tableau-de-bord/:path*",
+    "/locations/:path*",
+    "/connexion",
+    "/inscription",
+  ],
 };

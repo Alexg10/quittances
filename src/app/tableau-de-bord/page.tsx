@@ -6,16 +6,28 @@
 // de session. Seuls le logo et le formulaire de déconnexion sont des Client
 // Components.
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect, unstable_rethrow } from "next/navigation";
 
 import { getCurrentOwner, type Owner } from "@/auth/current-owner";
+import { PRIMARY_BUTTON_LINK_CLASSES } from "@/components/button-styles";
 import {
   buildSignInPath,
   DASHBOARD_PATH,
   toSearchString,
 } from "@/auth/return-path";
 
+import { getTodayInParis } from "@/rentals/rental-dates";
+import { splitRentals } from "@/rentals/rental-list";
+import {
+  listRentals,
+  RentalStoreError,
+  type Rental,
+} from "@/rentals/rental-store";
+
 import { DashboardHeader } from "./dashboard-header";
+import { EmptyRentals } from "./empty-rentals";
+import { RentalList } from "./rental-list";
 import { ServiceUnavailable } from "./service-unavailable";
 import { SignOutForm } from "./sign-out-form";
 
@@ -57,6 +69,16 @@ export default async function DashboardPage({
     );
   }
 
+  // Seule lecture de locations de la page : celle du propriétaire courant.
+  const rentals = await readRentals(owner);
+  if (rentals === "unavailable") {
+    // Une liste illisible n'est jamais rendue comme « Aucune location » (R31).
+    return <ServiceUnavailable />;
+  }
+  // Le statut se calcule sur le serveur, à la date du jour à Paris (R20).
+  const today = getTodayInParis(new Date());
+  const { ongoing, ended } = splitRentals(rentals, today);
+
   return (
     <>
       <DashboardHeader>
@@ -75,14 +97,38 @@ export default async function DashboardPage({
           <span className="text-text-primary">{owner.email}</span>
         </p>
 
-        <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-6">
-          <h2 className="font-display text-body font-bold">
-            Aucune location pour l&apos;instant
-          </h2>
-          <p className="text-text-secondary">
-            L&apos;ajout de locations arrivera dans une prochaine version.
-          </p>
-        </div>
+        {rentals.length === 0 ? (
+          <EmptyRentals />
+        ) : (
+          <>
+            <section className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <h2 className="font-display text-body font-bold">
+                  Locations en cours
+                </h2>
+                <Link
+                  href="/locations/nouvelle"
+                  className={PRIMARY_BUTTON_LINK_CLASSES}
+                >
+                  Ajouter une location
+                </Link>
+              </div>
+              {ongoing.length > 0 ? (
+                <RentalList rentals={ongoing} status="ongoing" />
+              ) : (
+                <p className="text-text-secondary">Aucune location en cours.</p>
+              )}
+            </section>
+            {ended.length > 0 ? (
+              <section className="flex flex-col gap-4">
+                <h2 className="font-display text-body font-bold">
+                  Locations terminées
+                </h2>
+                <RentalList rentals={ended} status="ended" />
+              </section>
+            ) : null}
+          </>
+        )}
       </main>
     </>
   );
@@ -107,5 +153,22 @@ async function readOwner(): Promise<Owner | null | "unavailable"> {
       error instanceof Error ? error.name : typeof error,
     );
     return "unavailable";
+  }
+}
+
+// Les locations du propriétaire courant, ou "unavailable" si la base ne répond
+// pas. Une RentalStoreError est une panne attendue : un état de la page. Toute
+// autre erreur remonte à error.tsx.
+async function readRentals(owner: Owner): Promise<Rental[] | "unavailable"> {
+  try {
+    return await listRentals(owner);
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof RentalStoreError) {
+      // Seul le type est journalisé : jamais de valeur saisie (R43).
+      console.error("Tableau de bord : locations illisibles", error.name);
+      return "unavailable";
+    }
+    throw error;
   }
 }

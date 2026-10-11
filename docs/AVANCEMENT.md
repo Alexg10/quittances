@@ -58,7 +58,15 @@ Spécification `docs/specs/03-gestion-des-locations.md` rédigée par `chef-de-p
 
 **T2 terminée et commitée** : règles pures dans `src/rentals/` (`rental-amount`, `rental-dates`, `rental-due-day`, `rental-text`, `rental-messages`, `rental-validation`), sans import serveur ; 860 tests Vitest ajoutés (2027 au total), identiques sous trois fuseaux horaires ; mutations sur les montants détectées. Ambiguïtés de la spécification laissées en l'état : date faite d'espaces (L20), plus de 500 espaces dans un montant, UUID d'une autre version que 4 accepté par `isRentalId`.
 
-Étape en cours : **T3** (tableau de bord, liste, chip de statut, adaptation des tests existants) chez `developpeur-front` en `sonnet`, puis `createur-de-tests`. Pas de recette avant T5.
+**T3 et T4 terminées** : le tableau de bord est la liste des locations (groupes « en cours » et « terminées », chip de statut, état vide), `src/components/rental-form.tsx` est le formulaire de location. 121 tests Vitest ajoutés (2148 au total).
+
+**T5 développée** par `developpeur-front` en `opus` (coupée une fois par la limite d'utilisation, puis reprise) : `src/app/locations/` (`/locations/nouvelle` et son action de création, `/locations/[id]` détail, écran « Location introuvable », `rental-access.ts` qui contrôle la session puis l'appartenance), `matcher` du proxy étendu à `/locations/:path*`. Isolation vérifiée à deux comptes dans le navigateur : réponse identique pour la location d'un autre, une location inexistante et un identifiant mal formé. T3, T4 et T5 commitées ensemble. Suites : lint propre, 2148 Vitest, 62 d'intégration, 215 e2e et 1 ignoré.
+
+**Décision d'architecture attendue de l'utilisateur** (trouvée en T5) : sous `cacheComponents`, toute page qui lit la session est reprise d'une coque vide. Conséquences mesurées : sans JavaScript, un formulaire refusé revient vide et sans message ; `notFound()` et `redirect()` appelés par une page répondent 200 avec un document que seul JavaScript remplit. « Location introuvable » répond donc 200 (contenu identique dans tous les cas), pas 404. Options : (a) retirer `cacheComponents` (vrais 404 et 307, erreurs sans JavaScript ; change les fiches 01 et 11, suites à rejouer) ; (b) le garder et ne plus exiger le fonctionnement sans JavaScript dans l'espace connecté (amender R34, CA24, CA29, CA40).
+
+Autres points ouverts : une date invalide ne peut pas être réaffichée dans un champ `type="date"` (CA24) ; deux lectures de session par requête sous `/locations` malgré `cache` de React, à comprendre.
+
+Ensuite : recette `qa` de T5 (première tranche de bout en bout), puis T6.
 
 Prompts des quatre agents ajustés avant de lancer (`02eade7`) : secrets, base de test et ports ; dossier de travail propre à chaque agent ; mutations avec `perl` ; liens internes en `next/link` ; critère d'isolation négatif dans chaque spécification.
 
