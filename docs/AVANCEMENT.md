@@ -66,7 +66,7 @@ Spécification `docs/specs/03-gestion-des-locations.md` rédigée par `chef-de-p
 
 **Retrait fait et commité** : `next.config.ts` sans `cacheComponents` ni `partialPrefetching`, plus aucun `export const instant`. Routes : `○ /`, `○ /connexion`, `○ /inscription`, `ƒ` pour `/tableau-de-bord` et tout `/locations`. Mesuré par le développeur : « Location introuvable » répond 404 avec un corps identique dans tous les cas ; chaque page protégée redirige elle-même en 307 sans session ; les erreurs de `/locations/nouvelle` se réaffichent sans JavaScript ; aucune page protégée servie depuis un cache ; plus de page précédente masquée dans le DOM. Suites : lint propre, 2148 Vitest, 62 d'intégration, 215 e2e et 1 ignoré.
 
-**Décision attendue de l'utilisateur** : `notFound()` répond bien 404, mais son document est vide sans JavaScript (coque d'erreur de Next, l'écran est posé par le script). Options : (A) garder ainsi ; (C) faire lire la location par le proxy, qui réécrit vers une page ordinaire avec le code 404, ce qui rompt la règle « le proxy ne lit jamais une location ».
+Décision de l'utilisateur sur l'écran « Location introuvable » : option (A). Il répond 404, et son document est vide sans JavaScript (coque d'erreur de Next) ; c'est accepté plutôt que de faire lire la location par le proxy. Inscrit en tête de la spécification 03.
 
 À faire avec T6 : page 404 générale en français (`app/not-found.tsx`, aujourd'hui la page anglaise de Next) ; ne donner de valeur à un champ de date que si elle est valide (avertissement de console) ; mémoriser `readOwner` du tableau de bord par requête.
 
@@ -74,7 +74,13 @@ Spécification `docs/specs/03-gestion-des-locations.md` rédigée par `chef-de-p
 
 À reconsidérer, rendus possibles par le retrait (rien n'est changé) : lire `retour` dans l'adresse de `/connexion` plutôt que dans `Referer` ; retirer du proxy la redirection sans session et celle de `/locations`, que les pages font elles-mêmes.
 
-Étape en cours : recette `qa` de T5 et non-régression de l'espace connecté. Puis T6.
+**Recette `qa` de T3 à T5 et non-régression faites** : conforme avec réserves, aucun bug bloquant ni majeur, le retrait de `cacheComponents` n'a rien cassé. Codes 404 et 307 confirmés, isolation à deux comptes sans fuite (liste, détail, création avec champs parasites, même onglet), 0 violation axe, panne de base et « Réessayer » vérifiés. Nouveaux `e2e/locations.spec.ts` et `e2e/aide-locations.ts` ; suite e2e à 259 réussis et 1 ignoré. Le test « Fixation de session » n'a pas été reproduit (160 répétitions) : cause toujours inconnue.
+
+Réserves mineures, acceptées : sans le proxy, le 307 produit par la page contient la chaîne constante « Location introuvable » (aucune donnée) ; une adresse à l'encodage illisible répond 400 et non l'écran introuvable (précision ajoutée à la spécification).
+
+Incident : la `qa` a arrêté le serveur de développement de l'utilisateur (port 3000) par un `pkill -f next-server`. Consigne ajoutée aux trois agents : arrêter un serveur par son numéro de processus, jamais par son nom.
+
+Étape en cours : **T6** (modifier, mettre fin, rouvrir, supprimer) chez `developpeur-front` en `opus`, avec les trois petits points listés plus haut. Puis tests, recette complète, commit, fusion.
 
 Prompts des quatre agents ajustés avant de lancer (`02eade7`) : secrets, base de test et ports ; dossier de travail propre à chaque agent ; mutations avec `perl` ; liens internes en `next/link` ; critère d'isolation négatif dans chaque spécification.
 
