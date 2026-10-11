@@ -20,7 +20,16 @@ export function DashboardHeader({ children }: DashboardHeaderProps) {
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
         {/* Déjà sur /tableau-de-bord, activer le logo y laisse et remonte en
             haut de page, sans recharger le document. */}
-        <LogoLink href={DASHBOARD_PATH} label="Quittances, tableau de bord" />
+        {/* Sans préchargement : le logo mène à la page déjà affichée, il n'y a
+            rien à préparer. Et à la déconnexion, Next relancerait ce
+            préchargement juste avant de quitter la page : sans session, le
+            proxy le redirige vers /connexion, qui répond 404 à une demande
+            faite pour une autre page (erreur dans la console). */}
+        <LogoLink
+          href={DASHBOARD_PATH}
+          label="Quittances, tableau de bord"
+          prefetch={false}
+        />
         {children}
       </div>
     </header>

@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Browser, type Page } from "@playwright/test";
 
 // Fonctions partagées par les specs qui ont besoin d'un compte (R40 de la
 // spécification 02) : chaque test crée ses propres comptes, par le formulaire
@@ -49,6 +49,51 @@ export async function inscrire(
   await remplirEtEnvoyer(page, email, motDePasse);
   await expect(page).toHaveURL(/\/tableau-de-bord$/);
   return { email: email.trim().toLowerCase(), motDePasse };
+}
+
+/** Ouvre /connexion (ou une variante avec `retour`) et attend l'hydratation. */
+export async function ouvrirConnexion(page: Page, chemin = "/connexion") {
+  await page.goto(chemin);
+  await expect(page.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
+  // Tant que React n'a pas attaché ses gestionnaires, le bouton Afficher ne ferait rien.
+  const bouton = page.getByRole("button", { name: "Afficher le mot de passe" });
+  await expect
+    .poll(() => bouton.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__reactProps"))))
+    .toBe(true);
+}
+
+/** Remplit et envoie le formulaire de connexion déjà affiché. */
+export async function remplirEtSeConnecter(page: Page, email: string, motDePasse: string) {
+  await champEmail(page).fill(email);
+  await champMotDePasse(page).fill(motDePasse);
+  await page.getByRole("button", { name: "Se connecter" }).click();
+}
+
+/** Se connecte par le formulaire et attend l'arrivée sur /tableau-de-bord. */
+export async function connecter(page: Page, { email, motDePasse }: { email: string; motDePasse: string }) {
+  await ouvrirConnexion(page);
+  await remplirEtSeConnecter(page, email, motDePasse);
+  await expect(page).toHaveURL(/\/tableau-de-bord$/);
+}
+
+/**
+ * Crée un compte dans un contexte jetable, puis s'y déconnecte : le compte n'a
+ * ensuite aucune session ouverte, ni dans le navigateur du test ni en base.
+ * Renvoie ses identifiants.
+ */
+export async function creerCompte(
+  browser: Browser,
+  options: { email?: string; motDePasse?: string } = {},
+): Promise<{ email: string; motDePasse: string }> {
+  const contexte = await browser.newContext();
+  try {
+    const page = await contexte.newPage();
+    const compte = await inscrire(page, options);
+    await deconnecter(page);
+    return compte;
+  } finally {
+    await contexte.close();
+  }
 }
 
 /** Le cookie de session, tel que le navigateur le détient. */
@@ -108,6 +153,15 @@ export async function reculerSession(email: string) {
     email,
     `update session set expires_at = now() + interval '10 days', updated_at = now() - interval '5 days' where ${DE_CE_COMPTE} returning id`,
   );
+}
+
+/** Nombre de sessions du compte en base (une par connexion encore valable). */
+export async function nombreDeSessions(email: string): Promise<number> {
+  const lignes = await surSessionsDeTest<{ n: string }>(
+    email,
+    `select count(*)::text as n from session where ${DE_CE_COMPTE}`,
+  );
+  return Number(lignes[0].n);
 }
 
 /** Date d'expiration de la session du compte (ms depuis 1970), ou null si elle n'existe plus. */

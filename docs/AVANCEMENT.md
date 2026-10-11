@@ -48,27 +48,22 @@ Précisions inscrites dans la spécification après T1 : le cookie de session do
 
 T2 testée par `createur-de-tests` (115 tests Vitest, 9 tests d'intégration, sept mutations détectées) puis recettée par `qa` : **livrable**, CA10 à CA15 et CA31 conformes, 0 violation axe, isolation entre deux comptes vérifiée, formulaire fonctionnel sans JavaScript, aucune redirection ouverte ni fuite du mot de passe. Nouveaux `e2e/inscription.spec.ts` et `e2e/aide-comptes.ts` ; suite e2e à 107 réussis, 3 ignorés (dont un `fixme` par projet à activer en T4 : lien « Se connecter » sans rechargement). Commitée (`70f9eb2`).
 
-**T3 (espace réservé, protection, déconnexion) développée, testée et recettée**, pas encore commitée. Fiche 11.
+**T3 (espace réservé, protection, déconnexion) terminée et commitée** (`4357088`). Fiche 11.
 
-- `/tableau-de-bord` définitif, en rendu bloquant (`export const instant = false`, symbole `ƒ`) : il s'affiche sans JavaScript et n'a pas d'état de chargement (R24 précisée).
-- `src/proxy.ts`, limité à `/tableau-de-bord`, `/connexion` et `/inscription` : renouvellement du cookie de session et redirection 307 précoce ; le contrôle d'accès reste dans la page et dans les Server Actions. Aucune lecture en base sur `/` (R39 précisée).
-- Déconnexion par formulaire POST, terminée par un rechargement complet du document (R18 précisée, seule exception à la règle « pas de rechargement complet »).
-- Écran de panne rendu par la page ; délais du pool `pg` de 5 s (connexion) et 5 s (requête), d'où environ 10 s avant l'écran de panne quand la base ne répond pas du tout.
-- `src/auth/return-path.ts` : règles pures du paramètre `retour` (un défaut trouvé par les tests et corrigé : une valeur répétée levait une erreur).
-- Corrigés au passage : Better Auth journalisait le SQL et le jeton de session ; sa déconnexion effaçait le cookie même base en panne ; mot de passe compté en points de code ; bouton en attente atténué.
-- Tests : 241 Vitest, 12 d'intégration, e2e à 139 réussis et 5 ignorés (`e2e/espace-reserve.spec.ts`, `e2e/aide-comptes.ts` complété). Recette `qa` : conforme, aucun bug bloquant, 0 violation axe.
+**T4 (page `/connexion`, retour, propriétaire déjà connecté) développée, testée et recettée**, pas encore commitée. Fiche 12.
 
-À reprendre en T4 :
+- `src/app/(auth)/connexion/` (page statique `○`, `sign-in-form.tsx`, `actions.ts`), `src/auth/sign-in.ts`, `sign-in-validation.ts`, `auth-error.ts`, `previous-session.ts`.
+- Le paramètre `retour` est lu par l'action dans l'en-tête `Referer`, puis validé et **reconstruit** par `src/auth/return-path.ts` (R14 précisée).
+- Propriétaire déjà connecté : redirection 307 par le proxy depuis `/connexion` et `/inscription`. Une connexion réussie ferme l'ancienne session du même navigateur (R3 précisée).
+- **Bug bloquant trouvé par la recette et corrigé : redirection ouverte** par `retour=/.//exemple.test` (le routeur client de Next normalisait le chemin en `//exemple.test`). Correctif : forme canonique exigée et destination reconstruite par le serveur ; contre-recette dans le navigateur, aucune valeur ne sort.
+- Journal : le pool `pg` écoute ses erreurs (plus d'exception non rattrapée ni de dump de la connexion).
+- État : lint propre, 1177 tests Vitest, 23 d'intégration, e2e à 187 réussis et 1 ignoré (navigation de l'en-tête sur mobile). Parcours 1 à 4 recettés, 0 violation axe, console vide.
 
-- Activer les `test.fixme` : lien « Se connecter » sans rechargement (CA10) et deux sessions du même compte (CA21).
-- Rejouer la mutation « rechargement complet remplacé par une navigation côté client » sur la déconnexion : elle n'est pas détectable tant que `/connexion` répond 404.
-- La copie des `Set-Cookie` dans le proxy semble redondante (les retirer ne change rien d'observable) : à élucider.
-- Après une navigation côté client vers le tableau de bord, la page précédente reste masquée dans le DOM (cache de navigation de Next) : vérifier que la connexion ne laisse rien de sensible.
-- Tester à la main « Réessayer » avec une base qui revient.
+Acceptés dans cette version, à traiter avant toute ouverture au public (Q8) : pas de limitation des tentatives de connexion (60 essais d'affilée acceptés) ; écart de temps de réponse d'environ 25 ms entre adresse inconnue et mot de passe faux ; pas de réinitialisation du mot de passe ni de vérification de l'adresse ; mentions légales.
 
-Observations mineures laissées en l'état : sans JavaScript, une déconnexion pendant une panne de base affiche « Internal Server Error » ; le titre du document est vide un court instant après la navigation qui suit l'inscription.
+Limites connues : environ 10 s avant l'écran de panne quand la base ne répond pas du tout ; sans en-tête `Referer`, le retour vers la page demandée est perdu (arrivée sur `/tableau-de-bord`) ; seul Chromium est testé.
 
-Connu et attendu jusqu'à T4 : erreurs 404 sur `/connexion`.
+Ensuite : commit de T4, puis **T5** (page d'accueil : « Créer mon compte », « Se connecter », adaptation des tests de la fonctionnalité 01), en `sonnet`. Point à surveiller en T5 : un propriétaire connecté sur `/` précharge `/connexion` et `/inscription`, que le proxy redirige ; vérifier la console.
 
 Points laissés ouverts par la recette, à reprendre dans une prochaine spécification :
 
@@ -111,6 +106,7 @@ Points laissés ouverts par la recette, à reprendre dans une prochaine spécifi
 - 09 — Authentification : hachage, session et cookie `httpOnly`, CSRF, autorisation, protection des routes dans l'App Router.
 - 10 — Server Actions et formulaires : `useActionState`, amélioration progressive, validation serveur, accessibilité des formulaires.
 - 11 — Protéger une route : proxy, cookie et Server Components, statique / partiel / dynamique, panne comme état, redirection ouverte.
+- 12 — Sécurité de la connexion : énumération, redirection ouverte (valider n'est pas normaliser), fixation de session, canal du temps de réponse, ce que chaque niveau de test voit.
 
 ## Notions à couvrir
 

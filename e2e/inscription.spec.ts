@@ -14,8 +14,8 @@ import {
 
 // Inscription (spec 02, T2) : CA10 à CA15, CA31, fonctionnement sans JavaScript (R29),
 // protection de /tableau-de-bord et isolation entre comptes (R2).
-// Non couverts ici : E8 (panne de base, manipulation manuelle, CA29) et la connexion
-// du compte existant après E3 (CA13, dernière partie : T4).
+// Non couvert ici : E8 (panne de base, manipulation manuelle, CA29). La connexion du
+// compte existant après E3 (CA13, dernière partie) est dans connexion.spec.ts.
 
 const E1 = "Saisissez votre adresse e-mail.";
 const E2 = "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.";
@@ -88,19 +88,24 @@ test.describe("Inscription", () => {
     expect(documents).toEqual([]);
   });
 
-  // À activer avec T4 : tant que /connexion répond 404, Next recharge le document.
-  test.fixme("CA10 : « Se connecter » mène à /connexion sans recharger le document (après T4)", async ({
+  test("CA10 : « Se connecter » mène à /connexion sans recharger le document", async ({
     page,
   }) => {
     await ouvrirInscription(page);
     await page.evaluate(() => {
       (window as unknown as { __temoin: string }).__temoin = "present";
     });
+    const documents: string[] = [];
+    page.on("request", (r) => {
+      if (r.resourceType() === "document") documents.push(r.url());
+    });
     await page.getByRole("link", { name: "Se connecter" }).click();
     await expect(page).toHaveURL(/\/connexion$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
     expect(await page.evaluate(() => (window as unknown as { __temoin?: string }).__temoin)).toBe(
       "present",
     );
+    expect(documents).toEqual([]);
   });
 
   test("CA11 : inscription réussie, adresse normalisée, cookie de session sûr", async ({
@@ -236,6 +241,7 @@ test.describe("Inscription", () => {
       expect(await cookieDeSession(p2)).toBeUndefined();
       await p2.goto("/tableau-de-bord");
       await expect(p2).toHaveURL(/\/connexion/);
+      await expect(p2.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
     } finally {
       await autre.close();
     }
@@ -403,8 +409,6 @@ test.describe("Inscription", () => {
     const messages: string[] = [];
     page.on("console", (m) => {
       if (m.type() !== "error" && m.type() !== "warning") return;
-      // /connexion n'existe pas avant T4 : son préchargement répond 404.
-      if (/404/.test(m.text())) return;
       messages.push(`${m.type()}: ${m.text()}`);
     });
     page.on("pageerror", (e) => messages.push(`pageerror: ${e.message}`));

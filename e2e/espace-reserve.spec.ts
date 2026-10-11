@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import {
   adresseUnique,
+  connecter,
   cookieDeSession,
   deconnecter,
   enteteCookie,
@@ -10,6 +11,7 @@ import {
   expirerSession,
   inscrire,
   MOT_DE_PASSE,
+  nombreDeSessions,
   ouvrirTableauDeBord,
   reculerSession,
 } from "./aide-comptes";
@@ -17,8 +19,8 @@ import {
 // Espace réservé, protection et déconnexion (spec 02, T3) : CA16 à CA22, CA28
 // (partie tableau de bord et déconnexion), CA36 (vu par axe et la console),
 // renouvellement de la session (R16), absence de résidu après déconnexion (R18).
-// Non couverts ici : la panne de base (CA29, manipulation manuelle : elle exige un
-// second serveur dont la base est injoignable) et l'affichage de /connexion (T4).
+// Non couvert ici : la panne de base (CA29, manipulation manuelle : elle exige un
+// second serveur dont la base est injoignable). La connexion est dans connexion.spec.ts.
 // Chaque test crée ses propres comptes (R40).
 
 const DEPART = "/tableau-de-bord?exemple=1";
@@ -93,8 +95,7 @@ test.describe("Espace réservé", () => {
   }) => {
     const messages: string[] = [];
     page.on("console", (m) => {
-      // Le préchargement de /connexion répond 404 tant que T4 n'existe pas.
-      if ((m.type() === "error" || m.type() === "warning") && !/404/.test(m.text())) {
+      if (m.type() === "error" || m.type() === "warning") {
         messages.push(`${m.type()}: ${m.text()}`);
       }
     });
@@ -211,6 +212,10 @@ test.describe("Espace réservé", () => {
     await poserTemoin(page);
 
     await deconnecter(page);
+    // Le formulaire de connexion s'affiche, vide, sans message (parcours 3, étape 3).
+    await expect(page.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
+    await expect(page.getByLabel("Adresse e-mail")).toHaveValue("");
+    await expect(page.locator("form").getByRole("alert")).toHaveCount(0);
 
     // La session n'existe plus sur le serveur et le cookie est effacé.
     expect(await expirationSession(email)).toBeNull();
@@ -226,6 +231,7 @@ test.describe("Espace réservé", () => {
     await page.goto("/tableau-de-bord");
     await expect(page).toHaveURL((u) => u.pathname === "/connexion");
     expect(new URL(page.url()).searchParams.get("retour")).toBe("/tableau-de-bord");
+    await expect(page.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
 
     // Le jeton relevé avant la déconnexion, rejoué : refusé.
     const rejoue = await request.get("/tableau-de-bord", {
@@ -241,6 +247,7 @@ test.describe("Espace réservé", () => {
       const autre = await contexte.newPage();
       await autre.goto("/tableau-de-bord");
       await expect(autre).toHaveURL((u) => u.pathname === "/connexion");
+      await expect(autre.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
     } finally {
       await contexte.close();
     }
@@ -300,6 +307,7 @@ test.describe("Espace réservé", () => {
     await deconnecter(page);
     await page.goBack();
     await expect(page).toHaveURL((u) => u.pathname === "/connexion");
+    await expect(page.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
     expect(await page.content()).not.toContain(email);
   });
 
@@ -333,10 +341,10 @@ test.describe("Espace réservé", () => {
     }
   });
 
-  // Une seconde session du même compte ne peut s'ouvrir que par la page de
-  // connexion (T4). Copier le cookie dans un second contexte réutiliserait le même
-  // jeton, donc la même session : ce ne serait pas CA21.
-  test.fixme("CA21 : deux sessions du même compte, la déconnexion de l'une épargne l'autre (après T4)", async ({
+  // Une seconde session du même compte ne s'ouvre que par la page de connexion :
+  // copier le cookie dans un second contexte réutiliserait le même jeton, donc la
+  // même session, et ce ne serait pas CA21.
+  test("CA21 : deux sessions du même compte, la déconnexion de l'une épargne l'autre", async ({
     browser,
   }) => {
     const ctx1 = await browser.newContext();
@@ -344,15 +352,14 @@ test.describe("Espace réservé", () => {
     try {
       const page1 = await ctx1.newPage();
       const page2 = await ctx2.newPage();
-      const { email, motDePasse } = await inscrire(page1);
-      await page2.goto("/connexion");
-      await page2.getByLabel("Adresse e-mail").fill(email);
-      await page2.getByLabel("Mot de passe", { exact: true }).fill(motDePasse);
-      await page2.getByRole("button", { name: "Se connecter" }).click();
-      await expect(page2).toHaveURL(/\/tableau-de-bord$/);
+      const compte = await inscrire(page1);
+      await connecter(page2, compte);
+      expect(await nombreDeSessions(compte.email)).toBe(2);
+      expect(await enteteCookie(page2)).not.toBe(await enteteCookie(page1));
       await deconnecter(page1);
+      expect(await nombreDeSessions(compte.email)).toBe(1);
       await page2.reload();
-      await expect(page2.getByText(`Connecté en tant que ${email}`)).toBeVisible();
+      await expect(page2.getByText(`Connecté en tant que ${compte.email}`)).toBeVisible();
     } finally {
       await ctx1.close();
       await ctx2.close();
@@ -450,6 +457,7 @@ test.describe("Espace réservé sans JavaScript (CA28, R29)", () => {
   test("redirection d'un visiteur, tableau de bord entier, déconnexion", async ({ page }) => {
     await page.goto(DEPART);
     await expect(page).toHaveURL((u) => u.pathname + u.search === ARRIVEE);
+    await expect(page.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
 
     const email = adresseUnique("nojs-t3");
     await page.goto("/inscription");

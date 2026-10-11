@@ -24,52 +24,178 @@ type SearchParams = Record<string, string | string[] | undefined>;
 // tableau quand le paramètre est répété (?retour=a&retour=b), ou rien.
 type ReturnParam = string | string[] | null | undefined;
 
+// Longueur maximale d'une destination. Largement au-dessus de toute adresse de
+// l'application ; au-delà, la valeur n'a rien d'une destination légitime.
+const MAX_RETURN_PATH_LENGTH = 2000;
+
+// Un chemin peut être encodé plusieurs fois (« %252e » se décode en « %2e »,
+// qui se décode en « . »). On le décode au plus ce nombre de fois ; s'il change
+// encore, il est refusé.
+const MAX_DECODING_ROUNDS = 3;
+
 // Renvoie la destination de retour si elle est sûre, sinon /tableau-de-bord.
-// Une destination sûre est renvoyée à l'identique (chemin, paramètres, ancre).
+// La destination renvoyée n'est jamais la chaîne reçue : c'est l'adresse
+// reconstruite après analyse (voir normalizeReturnPath).
 export function getSafeReturnPath(value: ReturnParam): string {
-  return isSafeReturnPath(value) ? value : DASHBOARD_PATH;
+  return normalizeReturnPath(value) ?? DASHBOARD_PATH;
+}
+
+// Même règle, à partir de l'adresse complète de la page de connexion, telle que
+// le navigateur l'annonce dans l'en-tête Referer quand il envoie le formulaire
+// (« http://…/connexion?retour=%2Ftableau-de-bord »). Cet en-tête vient du
+// navigateur, donc du visiteur : rien n'en est retenu sans passer par
+// isSafeReturnPath. En-tête absent ou illisible, autre page que /connexion,
+// paramètre `retour` absent ou répété : /tableau-de-bord.
+// L'origine de l'adresse (protocole, hôte) n'est pas comparée à la nôtre : elle
+// ne sert à rien ici, seul un chemin interne peut sortir de cette fonction.
+export function getSafeReturnPathFromPageUrl(pageUrl: string | null): string {
+  if (pageUrl === null) {
+    return DASHBOARD_PATH;
+  }
+  let url: URL;
+  try {
+    url = new URL(pageUrl);
+  } catch {
+    return DASHBOARD_PATH;
+  }
+  if (url.pathname !== SIGN_IN_PATH) {
+    return DASHBOARD_PATH;
+  }
+  // getAll renvoie toutes les valeurs du paramètre, déjà décodées. Une seule
+  // est attendue : zéro ou plusieurs sont transmises sous forme de tableau,
+  // que getSafeReturnPath refuse.
+  const values = url.searchParams.getAll("retour");
+  return getSafeReturnPath(values.length === 1 ? values[0] : values);
 }
 
 // `value is string` : là où cette fonction répond vrai, TypeScript sait que la
-// valeur est une chaîne.
+// valeur est une chaîne. Elle dit seulement si la valeur est acceptable : la
+// destination à suivre est celle que renvoie getSafeReturnPath.
 export function isSafeReturnPath(value: ReturnParam): value is string {
+  return normalizeReturnPath(value) !== null;
+}
+
+// Renvoie la destination à suivre, ou null si la valeur est refusée.
+//
+// Le danger : la valeur est lue trois fois, par ce code, par le navigateur et
+// par le routeur de Next dans le navigateur, et ces lecteurs ne la comprennent
+// pas forcément de la même façon. « /.//exemple.test » commence par un seul
+// « / » ; mais une fois le segment « . » retiré, il reste « //exemple.test »,
+// que le routeur de Next prenait pour l'adresse d'un autre site (redirection
+// ouverte trouvée par la recette de T4).
+//
+// Deux barrières indépendantes :
+// 1. Le chemin reçu doit déjà être sous forme canonique : tout ce qu'un lecteur
+//    pourrait réécrire est refusé (isCanonicalPath).
+// 2. La destination renvoyée est reconstruite à partir de l'adresse analysée,
+//    puis revérifiée : ce qui a été validé est exactement ce qui sera suivi.
+function normalizeReturnPath(value: ReturnParam): string | null {
   // La valeur vient de l'adresse, donc du visiteur : le type annoncé ne
   // garantit rien à l'exécution. Tout ce qui n'est pas une chaîne est refusé,
   // un tableau compris, même s'il contient une destination valide : on ne
   // choisit pas un élément parmi plusieurs.
-  if (typeof value !== "string") {
-    return false;
-  }
-  // Un seul « / » au début : « //exemple.test » désigne un autre site, et
-  // « https://… », « javascript:… » ou « tableau-de-bord » ne commencent pas
-  // par « / ».
-  if (!value.startsWith("/") || value.startsWith("//")) {
-    return false;
-  }
-  // Un navigateur lit « \ » comme « / » : « /\exemple.test » y vaut
-  // « //exemple.test ».
-  if (value.includes("\\")) {
-    return false;
+  if (typeof value !== "string" || value.length > MAX_RETURN_PATH_LENGTH) {
+    return null;
   }
   // Un navigateur retire tabulations et sauts de ligne d'une adresse :
-  // « /<tabulation>/exemple.test » y vaut aussi « //exemple.test ».
-  if (hasControlCharacter(value)) {
-    return false;
+  // « /<tabulation>/exemple.test » y vaut « //exemple.test ». Et il lit « \ »
+  // comme « / ». Refusés partout, paramètres et ancre compris.
+  if (hasControlCharacter(value) || value.includes("\\")) {
+    return null;
   }
 
-  // Seconde barrière : une fois analysée comme le fera le navigateur, la
-  // destination doit rester sur notre origine.
+  // Première barrière, sur la valeur reçue.
+  if (!isCanonicalPath(getPathPart(value))) {
+    return null;
+  }
+
+  // Seconde barrière : la valeur est analysée comme le fera le navigateur, sur
+  // une origine fictive, et doit y rester.
   let url: URL;
   try {
     url = new URL(value, INTERNAL_ORIGIN);
   } catch {
-    return false;
+    return null;
   }
   if (url.origin !== INTERNAL_ORIGIN) {
-    return false;
+    return null;
+  }
+  // La destination est reconstruite à partir des trois morceaux de l'adresse
+  // analysée. L'analyse a pu réécrire la valeur (un « é » devient « %C3%A9 ») :
+  // c'est ce résultat, et non la chaîne reçue, qui doit être sûr. Il repasse
+  // donc la première barrière, et une nouvelle analyse ne doit plus rien y
+  // changer.
+  const destination = url.pathname + url.search + url.hash;
+  if (!isCanonicalPath(url.pathname)) {
+    return null;
+  }
+  const reparsed = new URL(destination, INTERNAL_ORIGIN);
+  if (
+    reparsed.origin !== INTERNAL_ORIGIN ||
+    reparsed.pathname + reparsed.search + reparsed.hash !== destination
+  ) {
+    return null;
   }
 
-  return !PUBLIC_AUTH_PATHS.includes(normalizePathname(url.pathname));
+  // Les pages publiques ne sont jamais une destination (R22).
+  if (PUBLIC_AUTH_PATHS.includes(normalizePathname(url.pathname))) {
+    return null;
+  }
+  return destination;
+}
+
+// Le chemin d'une destination : ce qui précède le premier « ? » ou « # ».
+// La règle de forme canonique ne porte que sur lui. Les paramètres et l'ancre
+// peuvent contenir « // » ou « .. » (« ?suite=https://… » est une valeur
+// ordinaire) : tout lecteur d'adresse s'arrête de lire le chemin au premier
+// « ? » ou « # », et rien de ce qui suit ne peut devenir un nom de site.
+function getPathPart(value: string): string {
+  const end = value.search(/[?#]/);
+  return end === -1 ? value : value.slice(0, end);
+}
+
+// Vrai si le chemin est déjà sous la forme que tous ses lecteurs garderont :
+// - il commence par « / » ;
+// - il ne contient nulle part « // », « \ » ni caractère de contrôle ;
+// - aucun de ses segments n'est « . » ou « .. » (un lecteur les retire, et
+//   « /a/..//x » devient « //x ») ;
+// - il ne contient pas ces mêmes caractères sous forme encodée (« %2e » pour
+//   « . », « %2f » pour « / », « %5c » pour « \ »), même encodés plusieurs fois.
+function isCanonicalPath(path: string): boolean {
+  if (!path.startsWith("/")) {
+    return false;
+  }
+  let current = path;
+  // Le chemin est vérifié tel quel, puis décodé et revérifié, jusqu'à ce que
+  // le décodage ne change plus rien.
+  for (let round = 0; round <= MAX_DECODING_ROUNDS; round += 1) {
+    if (hasAmbiguousPathSyntax(current)) {
+      return false;
+    }
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(current);
+    } catch {
+      // Encodage invalide (« %zz ») : les lecteurs peuvent diverger.
+      return false;
+    }
+    if (decoded === current) {
+      return true;
+    }
+    current = decoded;
+  }
+  // Encore encodé après plusieurs décodages : refusé.
+  return false;
+}
+
+function hasAmbiguousPathSyntax(path: string): boolean {
+  if (path.includes("//") || path.includes("\\") || hasControlCharacter(path)) {
+    return true;
+  }
+  if (/%(2e|2f|5c)/i.test(path)) {
+    return true;
+  }
+  return path.split("/").some((segment) => segment === "." || segment === "..");
 }
 
 // Adresse de la page de connexion pour une page protégée demandée sans session

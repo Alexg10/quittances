@@ -4,25 +4,26 @@
 // Une session dure 60 jours et chaque utilisation la prolonge. La prolongation
 // touche deux choses qui doivent rester d'accord : la date d'expiration en base
 // et celle du cookie du navigateur. Un Server Component ne peut pas écrire de
-// cookie ; le proxy, lui, le peut, parce qu'il construit la réponse.
+// cookie ; le proxy, lui, le peut.
+//
+// Comment le cookie part : quand Better Auth prolonge une session (ou constate
+// qu'elle n'existe plus), son plugin nextCookies (./auth) écrit le cookie
+// prolongé (ou sa suppression) avec cookies() de next/headers. Dans le proxy,
+// Next ajoute lui-même à la réponse, redirection comprise, tout cookie écrit
+// de cette façon. Ce module n'a donc aucun en-tête Set-Cookie à transmettre.
 //
 // CE MODULE N'EST PAS UN CONTRÔLE D'ACCÈS (R2). Ce qu'il renvoie ne sert qu'à
-// prolonger la session et à rediriger tôt un visiteur sans session. Chaque page
-// et chaque Server Action appelle elle-même getCurrentOwner().
+// rediriger tôt, par confort. Chaque page et chaque Server Action appelle
+// elle-même getCurrentOwner().
 import "server-only";
 
 import { getAuth } from "./auth";
 
-export type SessionCheck = {
-  // "absent"  : la requête ne porte pas de cookie de session. Base non lue.
-  // "valid"   : la session existe en base et n'a pas expiré.
-  // "invalid" : cookie inventé, session expirée ou fermée.
-  // "unknown" : la base n'a pas répondu. On ne conclut rien.
-  state: "absent" | "valid" | "invalid" | "unknown";
-  // En-têtes Set-Cookie à recopier dans la réponse : le cookie prolongé quand
-  // la session vient de l'être, ou sa suppression quand elle est invalide.
-  setCookies: string[];
-};
+// "absent"  : la requête ne porte pas de cookie de session. Base non lue.
+// "valid"   : la session existe en base et n'a pas expiré.
+// "invalid" : cookie inventé, session expirée ou fermée.
+// "unknown" : la base n'a pas répondu. On ne conclut rien.
+export type SessionState = "absent" | "valid" | "invalid" | "unknown";
 
 // Nom du cookie de session, tel que Better Auth le calcule (il est préfixé de
 // « __Secure- » quand l'application est servie en https).
@@ -34,26 +35,19 @@ export async function getSessionCookieName(): Promise<string> {
 export async function checkAndRenewSession(
   requestHeaders: Headers,
   hasSessionCookie: boolean,
-): Promise<SessionCheck> {
+): Promise<SessionState> {
   // Sans cookie, il n'y a rien à prolonger : aucune lecture en base pour un
   // simple visiteur.
   if (!hasSessionCookie) {
-    return { state: "absent", setCookies: [] };
+    return "absent";
   }
 
   try {
     // getSession lit la session en base. Si elle n'a pas été prolongée depuis
     // un jour (`updateAge` dans ./auth), Better Auth repousse son expiration
-    // de 60 jours et produit le cookie correspondant. returnHeaders nous donne
-    // les en-têtes qu'il aurait renvoyés s'il répondait lui-même en HTTP.
-    const { headers, response } = await getAuth().api.getSession({
-      headers: requestHeaders,
-      returnHeaders: true,
-    });
-    return {
-      state: response ? "valid" : "invalid",
-      setCookies: headers.getSetCookie(),
-    };
+    // de 60 jours et écrit le cookie correspondant (voir l'en-tête du fichier).
+    const session = await getAuth().api.getSession({ headers: requestHeaders });
+    return session ? "valid" : "invalid";
   } catch (error) {
     // Base injoignable : la page demandée affichera elle-même l'écran de panne.
     // On ne journalise que le type de l'erreur, jamais son contenu.
@@ -61,6 +55,6 @@ export async function checkAndRenewSession(
       "Prolongation de session : erreur inattendue",
       error instanceof Error ? error.name : typeof error,
     );
-    return { state: "unknown", setCookies: [] };
+    return "unknown";
   }
 }

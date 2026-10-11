@@ -11,6 +11,7 @@ import { nextCookies } from "better-auth/next-js";
 import { getDb } from "../db";
 import * as schema from "../db/schema";
 import { requireEnv } from "../env";
+import { readAuthErrorCode } from "./auth-error";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "./sign-up-validation";
 
 const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
@@ -52,9 +53,10 @@ function createAuth() {
       // contient la requête SQL et ses valeurs : un jeton de session, une
       // adresse e-mail, un mot de passe haché. Constaté sur le build de
       // production. On ne garde donc que le niveau et le message, qui sont des
-      // textes fixes de la bibliothèque : ses autres arguments sont ignorés.
-      log: (level, message) => {
-        const line = `Better Auth [${level}] ${message}`;
+      // textes fixes de la bibliothèque, et, si une erreur les accompagne, son
+      // nom et son code (describeError). Rien d'autre n'en est lu.
+      log: (level, message, ...details) => {
+        const line = `Better Auth [${level}] ${message}${describeError(details[0])}`;
         if (level === "error") {
           console.error(line);
         } else {
@@ -72,10 +74,23 @@ function createAuth() {
     // qui sont ceux de R17 : HttpOnly, SameSite=Lax, chemin « / », et un contenu
     // limité au jeton signé.
     //
-    // nextCookies recopie les cookies posés par Better Auth dans la réponse de
-    // la Server Action en cours. Il doit rester le dernier plugin de la liste.
+    // nextCookies écrit les cookies posés par Better Auth avec cookies() de
+    // next/headers : ils partent ainsi avec la réponse de la Server Action en
+    // cours, ou avec celle du proxy quand c'est lui qui appelle Better Auth
+    // (./session-renewal). Il doit rester le dernier plugin de la liste.
     plugins: [nextCookies()],
   });
+}
+
+// Ce qu'on accepte d'écrire d'une erreur dans le journal : le nom de sa classe
+// et le code que Better Auth lui a donné, deux textes fixes. Jamais son message
+// ni ses autres propriétés. Exemple : « (APIError, FAILED_TO_GET_SESSION) ».
+function describeError(detail: unknown): string {
+  if (!(detail instanceof Error)) {
+    return "";
+  }
+  const code = readAuthErrorCode(detail);
+  return code === undefined ? ` (${detail.name})` : ` (${detail.name}, ${code})`;
 }
 
 type Auth = ReturnType<typeof createAuth>;

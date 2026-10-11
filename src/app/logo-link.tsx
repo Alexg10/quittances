@@ -8,6 +8,9 @@ type LogoLinkProps = {
   href?: string;
   // Nom accessible : le texte « Quittances » seul ne dit pas où mène le lien.
   label?: string;
+  // false : Next ne précharge pas la page visée. Par défaut (undefined), il la
+  // précharge dès que le lien est visible.
+  prefetch?: boolean;
 };
 
 // Client Component minimal : seul le logo a besoin d'un gestionnaire d'événement.
@@ -19,11 +22,13 @@ type LogoLinkProps = {
 export function LogoLink({
   href = "/",
   label = "Quittances, accueil",
+  prefetch,
 }: LogoLinkProps) {
   return (
     <Link
       href={href}
       aria-label={label}
+      prefetch={prefetch}
       className="rounded-md font-display text-subtitle font-bold"
       onNavigate={() => window.scrollTo(0, 0)}
     >
