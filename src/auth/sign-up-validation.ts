@@ -50,8 +50,12 @@ function hasValidEmailFormat(email: string): boolean {
 
 // R7 : la longueur seule. Le mot de passe est jugé tel qu'il a été saisi, sans
 // être rogné ni modifié : douze espaces sont un mot de passe valide.
-// La longueur est celle de `String.length`, comme dans Better Auth : les deux
-// contrôles ne peuvent donc pas se contredire.
+// La longueur se compte en caractères Unicode (points de code), pas avec
+// `String.length`, qui compte des unités UTF-16 : un emoji y vaut 2, et six
+// emojis passeraient pour douze caractères.
+// Better Auth, lui, compte avec `String.length` : ses bornes sont réglées en
+// conséquence dans ./auth, pour qu'il ne refuse jamais ce que cette règle
+// accepte.
 // Renvoie null si le mot de passe est valide.
 export function validateNewPassword(
   password: string,
@@ -59,11 +63,18 @@ export function validateNewPassword(
   if (password === "") {
     return "E4";
   }
-  if (password.length < PASSWORD_MIN_LENGTH) {
+  const length = countCharacters(password);
+  if (length < PASSWORD_MIN_LENGTH) {
     return "E5";
   }
-  if (password.length > PASSWORD_MAX_LENGTH) {
+  if (length > PASSWORD_MAX_LENGTH) {
     return "E6";
   }
   return null;
+}
+
+// Parcourir une chaîne avec l'opérateur de décomposition la découpe en points
+// de code : "😀".length vaut 2, [..."😀"].length vaut 1.
+function countCharacters(text: string): number {
+  return [...text].length;
 }

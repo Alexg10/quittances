@@ -15,6 +15,7 @@ import { account, user } from "../db/schema";
 import { getAuth } from "./auth";
 import { createAccount } from "./create-account";
 import { getCurrentOwner } from "./current-owner";
+import { validateNewPassword } from "./sign-up-validation";
 
 type CookieOptions = {
   httpOnly?: boolean;
@@ -284,4 +285,37 @@ describe("R5 (précision après T1) — adresse refusée par la bibliothèque d'
       expect(browser.cookies.has(SESSION_COOKIE)).toBe(false);
     },
   );
+});
+
+describe("R7 — la longueur du mot de passe se compte en caractères, la bibliothèque doit suivre", () => {
+  // Cohérence entre notre règle (points de code) et la limite de Better Auth
+  // (unités UTF-16, où un emoji vaut 2) : tout ce que validateNewPassword
+  // accepte doit être accepté par la bibliothèque, à l'inscription puis à la
+  // connexion.
+  it.each([
+    ["12 emojis (24 unités UTF-16)", 12],
+    ["128 emojis (256 unités UTF-16)", 128],
+  ])("accepte un mot de passe de %s et permet ensuite de se connecter", async (_nom, count) => {
+    const email = uniqueEmail("emojis");
+    const password = "😀".repeat(count);
+
+    expect(validateNewPassword(password)).toBeNull();
+    expect(await createAccount(email, password)).toBe("created");
+
+    browser.cookies.clear();
+    await getAuth().api.signInEmail({ body: { email, password } });
+    const owner = await getCurrentOwner();
+    expect(owner?.email).toBe(email);
+  });
+
+  it("une connexion avec un autre mot de passe de même longueur est refusée", async () => {
+    const email = uniqueEmail("emojis-faux");
+    expect(await createAccount(email, "😀".repeat(12))).toBe("created");
+
+    browser.cookies.clear();
+    await expect(
+      getAuth().api.signInEmail({ body: { email, password: "😁".repeat(12) } }),
+    ).rejects.toThrow();
+    expect(await getCurrentOwner()).toBeNull();
+  });
 });

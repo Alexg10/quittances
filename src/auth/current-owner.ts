@@ -22,22 +22,35 @@ export type Owner = {
 // d'une valeur que le navigateur pourrait choisir (paramètre, champ, corps).
 //
 // - Pas de session, session expirée, session fermée ou jeton invalide : null.
-// - Base injoignable : l'erreur remonte. On ne renvoie jamais un propriétaire
-//   « dans le doute » (R24).
+// - Base injoignable, avec un cookie de session correctement signé : l'erreur
+//   remonte. On ne renvoie jamais un propriétaire « dans le doute » (R24), et
+//   on ne répond pas non plus « personne » : l'appelant doit pouvoir distinguer
+//   une panne d'une absence de session.
+// - Base injoignable, sans cookie ou avec un cookie à la signature fausse :
+//   null. La base n'est pas interrogée, il n'y a de toute façon pas de session.
 //
 // `cache` de React ne garde le résultat que le temps d'une requête : plusieurs
 // composants d'une même page partagent une seule lecture en base, et rien n'est
 // conservé d'une requête à l'autre ni d'un visiteur à l'autre.
 //
-// Lire les en-têtes est une donnée de requête : avec `cacheComponents`, tout
-// composant qui appelle cette fonction doit être rendu sous une limite <Suspense>.
+// Lire les en-têtes est une donnée de requête : avec `cacheComponents`, un
+// composant qui appelle cette fonction ne peut pas être pré-rendu au build. Il
+// est soit placé sous une limite <Suspense>, soit rendu par une page qui
+// déclare `instant = false` (rendu bloquant, voir /tableau-de-bord).
 export const getCurrentOwner = cache(async (): Promise<Owner | null> => {
   // Les en-têtes sont lus en premier, et l'ordre compte : pendant `pnpm build`,
   // il n'y a pas de requête et headers() ne répond jamais. Le pré-rendu s'arrête
   // donc ici, sans atteindre getAuth() : le build n'a besoin ni du secret ni de
   // la base.
   const requestHeaders = await headers();
-  const session = await getAuth().api.getSession({ headers: requestHeaders });
+  const session = await getAuth().api.getSession({
+    headers: requestHeaders,
+    // Lecture seule. Prolonger la session modifie la base ET le cookie, or un
+    // Server Component ne peut pas écrire de cookie : les deux se
+    // désaccorderaient. La prolongation est faite au même endroit pour les
+    // deux, dans le proxy (voir ./session-renewal).
+    query: { disableRefresh: true },
+  });
   if (!session) {
     return null;
   }

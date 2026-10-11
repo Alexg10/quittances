@@ -13,7 +13,7 @@ import {
 } from "./aide-comptes";
 
 // Inscription (spec 02, T2) : CA10 à CA15, CA31, fonctionnement sans JavaScript (R29),
-// protection provisoire de /tableau-de-bord et isolation entre comptes (R2).
+// protection de /tableau-de-bord et isolation entre comptes (R2).
 // Non couverts ici : E8 (panne de base, manipulation manuelle, CA29) et la connexion
 // du compte existant après E3 (CA13, dernière partie : T4).
 
@@ -450,12 +450,14 @@ test.describe("Inscription sans JavaScript (R29)", () => {
     await champMotDePasse(page).fill(MOT_DE_PASSE);
     await page.getByRole("button", { name: BOUTON }).click();
     await expect(page).toHaveURL(/\/tableau-de-bord$/);
-    // Le contenu du tableau de bord est révélé par script (connu, T3) : on lit le HTML reçu.
-    await expect.poll(() => page.content()).toContain(email);
+    // Rendu d'un bloc sur le serveur : tout est visible sans script.
+    await expect(page.getByRole("heading", { level: 1, name: "Tableau de bord" })).toBeVisible();
+    await expect(page.getByText(`Connecté en tant que ${email}`)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible();
   });
 });
 
-test.describe("Protection provisoire et isolation", () => {
+test.describe("Protection de /tableau-de-bord et isolation", () => {
   test("/tableau-de-bord sans session : redirection, aucune adresse dans ce que reçoit le visiteur", async ({
     page,
     request,
@@ -463,8 +465,13 @@ test.describe("Protection provisoire et isolation", () => {
     for (const cookie of [undefined, "better-auth.session_token=inventé.abc"]) {
       const reponse = await request.get("/tableau-de-bord?exemple=1", {
         headers: cookie ? { Cookie: cookie } : {},
+        maxRedirects: 0,
       });
       const html = await reponse.text();
+      expect(reponse.status()).toBe(307);
+      expect(reponse.headers().location).toBe(
+        "/connexion?retour=%2Ftableau-de-bord%3Fexemple%3D1",
+      );
       expect(html).not.toContain("Connecté en tant que");
       expect(html).not.toContain("Se déconnecter");
       expect(html).not.toMatch(/<title>Tableau de bord/);
@@ -476,7 +483,9 @@ test.describe("Protection provisoire et isolation", () => {
       }
     });
     await page.goto("/tableau-de-bord?exemple=1");
-    await expect(page).toHaveURL(/\/connexion/);
+    await expect(page).toHaveURL(
+      (u) => u.pathname + u.search === "/connexion?retour=%2Ftableau-de-bord%3Fexemple%3D1",
+    );
     expect(corps.join("")).not.toContain("Connecté en tant que");
   });
 

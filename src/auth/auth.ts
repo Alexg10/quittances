@@ -11,6 +11,7 @@ import { nextCookies } from "better-auth/next-js";
 import { getDb } from "../db";
 import * as schema from "../db/schema";
 import { requireEnv } from "../env";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "./sign-up-validation";
 
 const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 
@@ -31,11 +32,35 @@ function createAuth() {
     }),
     emailAndPassword: {
       enabled: true,
-      // R7 : la longueur seule, sans règle de composition.
-      minPasswordLength: 12,
-      maxPasswordLength: 128,
+      // R7 : la longueur seule, sans règle de composition. La règle qui fait
+      // foi est validateNewPassword (./sign-up-validation), appliquée avant :
+      // elle compte en caractères Unicode. Better Auth compte autrement, en
+      // unités UTF-16 (`String.length`), où un emoji vaut 2. Ses deux bornes
+      // sont donc réglées pour ne jamais refuser un mot de passe que notre
+      // règle accepte :
+      // - 12 caractères font au moins 12 unités ;
+      // - 128 caractères font au plus 256 unités.
+      minPasswordLength: PASSWORD_MIN_LENGTH,
+      maxPasswordLength: PASSWORD_MAX_LENGTH * 2,
       // R11 : l'inscription ouvre aussitôt une session.
       autoSignIn: true,
+    },
+    logger: {
+      level: "warn",
+      // Par défaut, Better Auth écrit dans le journal l'erreur d'origine à la
+      // suite de son message. Quand la base ne répond pas, cette erreur
+      // contient la requête SQL et ses valeurs : un jeton de session, une
+      // adresse e-mail, un mot de passe haché. Constaté sur le build de
+      // production. On ne garde donc que le niveau et le message, qui sont des
+      // textes fixes de la bibliothèque : ses autres arguments sont ignorés.
+      log: (level, message) => {
+        const line = `Better Auth [${level}] ${message}`;
+        if (level === "error") {
+          console.error(line);
+        } else {
+          console.warn(line);
+        }
+      },
     },
     session: {
       // R16 : 60 jours glissants. La prolongation n'est écrite en base qu'une

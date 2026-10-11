@@ -46,18 +46,29 @@ Précisions inscrites dans la spécification après T1 : le cookie de session do
 
 **T2 (composants de formulaire et page `/inscription`) développée** par `developpeur-front` en `opus` (interrompu une fois par la mise en veille de l'ordinateur, puis repris), vérifiée par l'orchestrateur, pas encore testée, recettée ni commitée : `src/app/(auth)/` (layout commun, `inscription/page.tsx`, `sign-up-form.tsx`, `actions.ts`), `src/components/` (`field`, `password-field`, `submit-button`, `form-message`), règles pures dans `src/auth/sign-up-validation.ts`, `messages.ts`, `form-state.ts`, `/tableau-de-bord` provisoire mais protégée. Build : `○ /inscription`, `◐ /tableau-de-bord`. Correctif dans le socle de T1 : une adresse refusée par Better Auth donnait E8 au lieu de E2. `reuseExistingServer` de Playwright passé à `false`. Fiche 10.
 
-T2 testée par `createur-de-tests` (115 tests Vitest, 9 tests d'intégration, sept mutations détectées) puis recettée par `qa` : **livrable**, CA10 à CA15 et CA31 conformes, 0 violation axe, isolation entre deux comptes vérifiée, formulaire fonctionnel sans JavaScript, aucune redirection ouverte ni fuite du mot de passe. Nouveaux `e2e/inscription.spec.ts` et `e2e/aide-comptes.ts` ; suite e2e à 107 réussis, 3 ignorés (dont un `fixme` par projet à activer en T4 : lien « Se connecter » sans rechargement). Pas encore commitée.
+T2 testée par `createur-de-tests` (115 tests Vitest, 9 tests d'intégration, sept mutations détectées) puis recettée par `qa` : **livrable**, CA10 à CA15 et CA31 conformes, 0 violation axe, isolation entre deux comptes vérifiée, formulaire fonctionnel sans JavaScript, aucune redirection ouverte ni fuite du mot de passe. Nouveaux `e2e/inscription.spec.ts` et `e2e/aide-comptes.ts` ; suite e2e à 107 réussis, 3 ignorés (dont un `fixme` par projet à activer en T4 : lien « Se connecter » sans rechargement). Commitée (`70f9eb2`).
 
-À traiter en T3 :
+**T3 (espace réservé, protection, déconnexion) développée, testée et recettée**, pas encore commitée. Fiche 11.
 
-- Sans JavaScript, `/tableau-de-bord` n'affiche que « Chargement en cours » (contenu sous `<Suspense>` révélé par script), ce qui contredit R29 et CA28. Chercher d'abord un rendu bloquant dans la documentation de Next ; sinon assouplir la spécification aux seules pages publiques.
-- Base injoignable : `/tableau-de-bord` redirige vers `/connexion` au lieu d'afficher l'écran de panne (R24, CA29), alors que `getCurrentOwner` est censée relancer l'erreur.
-- Renouvellement du cookie de session à la navigation (R16).
-- Deux défauts mineurs relevés par la QA : la longueur du mot de passe compte les unités UTF-16 (6 emojis passent pour 12 caractères) ; le bouton en attente a la même apparence que le bouton actif.
+- `/tableau-de-bord` définitif, en rendu bloquant (`export const instant = false`, symbole `ƒ`) : il s'affiche sans JavaScript et n'a pas d'état de chargement (R24 précisée).
+- `src/proxy.ts`, limité à `/tableau-de-bord`, `/connexion` et `/inscription` : renouvellement du cookie de session et redirection 307 précoce ; le contrôle d'accès reste dans la page et dans les Server Actions. Aucune lecture en base sur `/` (R39 précisée).
+- Déconnexion par formulaire POST, terminée par un rechargement complet du document (R18 précisée, seule exception à la règle « pas de rechargement complet »).
+- Écran de panne rendu par la page ; délais du pool `pg` de 5 s (connexion) et 5 s (requête), d'où environ 10 s avant l'écran de panne quand la base ne répond pas du tout.
+- `src/auth/return-path.ts` : règles pures du paramètre `retour` (un défaut trouvé par les tests et corrigé : une valeur répétée levait une erreur).
+- Corrigés au passage : Better Auth journalisait le SQL et le jeton de session ; sa déconnexion effaçait le cookie même base en panne ; mot de passe compté en points de code ; bouton en attente atténué.
+- Tests : 241 Vitest, 12 d'intégration, e2e à 139 réussis et 5 ignorés (`e2e/espace-reserve.spec.ts`, `e2e/aide-comptes.ts` complété). Recette `qa` : conforme, aucun bug bloquant, 0 violation axe.
+
+À reprendre en T4 :
+
+- Activer les `test.fixme` : lien « Se connecter » sans rechargement (CA10) et deux sessions du même compte (CA21).
+- Rejouer la mutation « rechargement complet remplacé par une navigation côté client » sur la déconnexion : elle n'est pas détectable tant que `/connexion` répond 404.
+- La copie des `Set-Cookie` dans le proxy semble redondante (les retirer ne change rien d'observable) : à élucider.
+- Après une navigation côté client vers le tableau de bord, la page précédente reste masquée dans le DOM (cache de navigation de Next) : vérifier que la connexion ne laisse rien de sensible.
+- Tester à la main « Réessayer » avec une base qui revient.
+
+Observations mineures laissées en l'état : sans JavaScript, une déconnexion pendant une panne de base affiche « Internal Server Error » ; le titre du document est vide un court instant après la navigation qui suit l'inscription.
 
 Connu et attendu jusqu'à T4 : erreurs 404 sur `/connexion`.
-
-Les comptes `@quittances.test` de la base de test peuvent être purgés à tout moment ; chaque exécution de `pnpm test:e2e` en crée.
 
 Points laissés ouverts par la recette, à reprendre dans une prochaine spécification :
 
@@ -99,6 +110,7 @@ Points laissés ouverts par la recette, à reprendre dans une prochaine spécifi
 - 08 — Base de données : Postgres, Neon, ORM, migrations, isolation des données, accès depuis l'App Router.
 - 09 — Authentification : hachage, session et cookie `httpOnly`, CSRF, autorisation, protection des routes dans l'App Router.
 - 10 — Server Actions et formulaires : `useActionState`, amélioration progressive, validation serveur, accessibilité des formulaires.
+- 11 — Protéger une route : proxy, cookie et Server Components, statique / partiel / dynamique, panne comme état, redirection ouverte.
 
 ## Notions à couvrir
 

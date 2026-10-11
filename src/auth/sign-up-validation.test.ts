@@ -118,3 +118,49 @@ describe("validateNewPassword", () => {
     expect(validateNewPassword(`"'<>&;\\/%$#@!`)).toBeNull();
   });
 });
+
+describe("validateNewPassword — longueur en points de code Unicode (R7 précisée)", () => {
+  const emojis = (n: number) => "😀".repeat(n);
+
+  it.each([
+    [6, "E5"],
+    [11, "E5"],
+    [12, null],
+    [128, null],
+    [129, "E6"],
+  ] as const)("R7 — %i emojis donnent %s", (nombre, attendu) => {
+    expect(validateNewPassword(emojis(nombre))).toBe(attendu);
+  });
+
+  it("R7 — 10 caractères ASCII et 1 emoji font 11 caractères : E5", () => {
+    expect(validateNewPassword(`${"a".repeat(10)}😀`)).toBe("E5");
+  });
+
+  it("R7 — 10 caractères ASCII et 2 emojis font 12 caractères : accepté", () => {
+    expect(validateNewPassword(`${"a".repeat(10)}😀😀`)).toBeNull();
+  });
+
+  it("R7 — 127 caractères ASCII et 1 emoji font 128 caractères : accepté", () => {
+    expect(validateNewPassword(`${"a".repeat(127)}😀`)).toBeNull();
+  });
+
+  it("R7 — 127 caractères ASCII et 2 emojis font 129 caractères : E6", () => {
+    expect(validateNewPassword(`${"a".repeat(127)}😀😀`)).toBe("E6");
+  });
+
+  it("R7 — 12 caractères accentués (é) sont acceptés, 11 sont refusés", () => {
+    expect(validateNewPassword("é".repeat(12))).toBeNull();
+    expect(validateNewPassword("é".repeat(11))).toBe("E5");
+  });
+
+  it("R7 — un caractère décomposé (e + accent combinant) compte pour deux points de code", () => {
+    expect(validateNewPassword("e\u0301".repeat(6))).toBeNull();
+    expect(validateNewPassword("e\u0301".repeat(5))).toBe("E5");
+  });
+
+  it("R7 — un emoji composé (famille, 5 points de code) compte pour 5", () => {
+    const famille = "👨\u200D👩\u200D👧";
+    expect(validateNewPassword(famille.repeat(2))).toBe("E5");
+    expect(validateNewPassword(famille.repeat(3))).toBeNull();
+  });
+});

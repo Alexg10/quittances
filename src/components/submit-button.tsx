@@ -22,8 +22,9 @@ export function SubmitButton({
         // activation : une seule demande part (R28).
         disabled={pending}
         // Les effets de survol sont réservés au bouton actif (enabled:) : en
-        // attente, il garde sa taille, sans décalage ni lueur.
-        className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-6 text-body font-medium text-surface transition-[background-color,translate] duration-200 enabled:hover:bg-primary-hover enabled:hover:shadow-primary-glow motion-safe:enabled:hover:-translate-y-px motion-reduce:duration-0"
+        // attente, il garde sa taille, sans décalage ni lueur, et son opacité
+        // tombe à 60 % (disabled:) pour qu'il se distingue du bouton actif.
+        className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-6 text-body font-medium text-surface transition-[background-color,translate] duration-200 enabled:hover:bg-primary-hover enabled:hover:shadow-primary-glow motion-safe:enabled:hover:-translate-y-px disabled:opacity-60 motion-reduce:duration-0"
       >
         {pending ? pendingLabel : label}
       </button>

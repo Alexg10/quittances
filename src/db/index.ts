@@ -16,10 +16,20 @@ declare global {
   var pgPool: Pool | undefined;
 }
 
+// Délai accordé à la base pour ouvrir une connexion, puis pour répondre à une
+// requête. Cinq secondes : une base Neon mise en veille met une à deux secondes
+// à se réveiller, et ne doit pas être prise pour une base en panne.
+const DATABASE_TIMEOUT_IN_MS = 5_000;
+
 function getPool(): Pool {
   // Créer un Pool n'ouvre aucune connexion : la première part à la première requête.
   globalThis.pgPool ??= new Pool({
     connectionString: requireEnv("DATABASE_URL"),
+    // Sans ces deux délais, une base qui accepte la connexion mais ne répond
+    // jamais ferait attendre la page indéfiniment. Passé le délai, `pg` lève
+    // une erreur, traitée comme toute panne de base (R24).
+    connectionTimeoutMillis: DATABASE_TIMEOUT_IN_MS,
+    query_timeout: DATABASE_TIMEOUT_IN_MS,
   });
   return globalThis.pgPool;
 }

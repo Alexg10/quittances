@@ -31,4 +31,25 @@ describe("SubmitButton", () => {
 
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
+
+  it("R28 — en attente : opacité réduite (jsdom ne calcule pas le CSS, on lit la déclaration conditionnelle)", () => {
+    render(<SubmitButton label="Créer mon compte" pendingLabel="Création en cours" pending />);
+
+    expect(screen.getByRole("button")).toHaveClass("disabled:opacity-60");
+  });
+
+  it("R28 — hors attente : aucune opacité réduite appliquée au bouton actif", () => {
+    render(<SubmitButton label="Créer mon compte" pendingLabel="Création en cours" pending={false} />);
+
+    expect(screen.getByRole("button").className).not.toMatch(/(^|\s)opacity-/);
+  });
+
+  it("R28 — en attente : pas d'effet de survol (les effets sont réservés au bouton actif)", () => {
+    render(<SubmitButton label="Créer mon compte" pendingLabel="Création en cours" pending />);
+
+    const classes = screen.getByRole("button").className.split(/\s+/);
+    const survols = classes.filter((c) => c.includes("hover:"));
+    expect(survols.length).toBeGreaterThan(0);
+    expect(survols.every((c) => c.includes("enabled:"))).toBe(true);
+  });
 });

@@ -104,7 +104,7 @@ Dans cette version, la seule donnée privée affichée est l'adresse e-mail du p
 
 **R17 — Cookie de session.** Il est illisible par le JavaScript de la page (`HttpOnly`), limité au même site (`SameSite=Lax` ou plus strict), marqué `Secure` quand l'application est servie en HTTPS, et ne contient qu'un jeton : ni adresse e-mail, ni mot de passe. **Précision après T1** : ni l'adresse IP ni l'agent utilisateur ne sont enregistrés avec la session, tant qu'aucune fonctionnalité ne s'en sert (minimisation des données personnelles).
 
-**R18 — Déconnexion.** « Se déconnecter » supprime la session **sur le serveur**, puis mène à `/connexion`. Après cela, le jeton de l'ancienne session est refusé même s'il est présenté à nouveau. La déconnexion est déclenchée par un bouton de formulaire, jamais par un lien ni par une requête GET (un préchargement de lien ne doit pas pouvoir déconnecter). Si la session a déjà expiré ou a déjà été fermée dans un autre onglet, le résultat est le même : arrivée sur `/connexion`, sans message d'erreur.
+**R18 — Déconnexion.** « Se déconnecter » supprime la session **sur le serveur**, puis mène à `/connexion`. Après cela, le jeton de l'ancienne session est refusé même s'il est présenté à nouveau. La déconnexion est déclenchée par un bouton de formulaire, jamais par un lien ni par une requête GET (un préchargement de lien ne doit pas pouvoir déconnecter). Si la session a déjà expiré ou a déjà été fermée dans un autre onglet, le résultat est le même : arrivée sur `/connexion`, sans message d'erreur. **Précision après T3** : la déconnexion se termine par un **rechargement complet du document** vers `/connexion`. C'est la seule exception à la règle « pas de rechargement complet » : la déconnexion est une frontière de sécurité, et le cache de navigation de Next garderait sinon dans le document, masquées, les pages protégées récemment affichées. Après la déconnexion, aucune donnée du propriétaire ne subsiste dans le DOM, même masquée.
 
 **R19 — Bouton Précédent après déconnexion.** Après une déconnexion, revenir en arrière dans l'historique n'affiche jamais le contenu protégé ni l'adresse e-mail : le visiteur aboutit sur `/connexion`.
 
@@ -127,7 +127,7 @@ Cas « déjà là » : `/connexion` et `/inscription` étant publiques, un visit
 
 **R23 — Protection.** Un visiteur non connecté (pas de session, session expirée ou jeton invalide) qui demande une page protégée est redirigé vers `/connexion?retour=<chemin et paramètres demandés, encodés>`, y compris quand la page demandée est `/tableau-de-bord` sans paramètre. Il ne voit jamais, même un instant, le contenu protégé : ni le titre de la page, ni l'adresse e-mail, ni le bouton de déconnexion ne figurent dans ce que le serveur lui envoie. Seuls l'en-tête réduit au logo et l'état de chargement (R24) peuvent lui parvenir avant la redirection. Le type de redirection (réponse HTTP ou navigation déclenchée après un premier affichage) est laissé au développeur : seuls l'adresse d'arrivée et l'absence de contenu protégé sont exigés.
 
-**R24 — Chargement et panne.** Pendant que la session est vérifiée, la zone de contenu d'une page protégée affiche le texte « Chargement en cours » et rien d'autre. Si la base de données est injoignable, aucune page n'affiche de contenu protégé : `/tableau-de-bord` affiche l'écran « Service momentanément indisponible » (voir « Contenus ») ; les formulaires affichent le message E8 et ne créent ni compte ni session. Dans le doute, l'accès est refusé.
+**R24 — Chargement et panne.** Pendant que la session est vérifiée, la zone de contenu d'une page protégée affiche le texte « Chargement en cours » et rien d'autre. Si la base de données est injoignable, aucune page n'affiche de contenu protégé : `/tableau-de-bord` affiche l'écran « Service momentanément indisponible » (voir « Contenus ») ; les formulaires affichent le message E8 et ne créent ni compte ni session. Dans le doute, l'accès est refusé. **Précision après T3** : `/tableau-de-bord` est rendu d'un bloc sur le serveur (rendu bloquant), pour s'afficher sans JavaScript (R29). Il n'a donc **pas** d'état « Chargement en cours » : la première phrase de cette règle ne s'applique plus. Une base qui ne répond pas dans un délai de quelques secondes est traitée comme une base injoignable : la page n'attend jamais indéfiniment.
 
 ### Formulaires et accessibilité
 
@@ -208,7 +208,7 @@ Le logo est toujours un lien `next/link`. Cas « déjà là » : sur `/tableau-d
 
 Le lien « Se connecter » a l'apparence d'un bouton secondaire petit (R33). Il est visible et atteignable **à toutes les largeurs**, y compris sous 768px où la navigation est masquée. Il est dans l'en-tête mais **hors** de la navigation « Navigation principale », qui garde exactement ses deux liens. Les deux nouveaux liens passent par `next/link` : leur activation ne recharge pas le document. Le libellé « Voir comment ça marche » disparaît de la page ; les ancres `#fonctionnement` et `#fonctionnalites` restent atteignables par l'en-tête à partir de 768px.
 
-**R39 — La page d'accueil reste statique et identique pour tous.** Elle ne lit ni cookie ni session et reste pré-rendue au build. Un propriétaire déjà connecté qui s'y rend voit donc la même page, avec les mêmes liens : « Se connecter » et « Créer mon compte » le mènent tous deux à `/tableau-de-bord`, par la redirection de R22. Il n'est pas redirigé automatiquement depuis `/`. Justification : personnaliser l'en-tête obligerait à rendre la page à chaque requête ou à l'adapter après coup dans le navigateur, pour un bénéfice mince ; le libellé légèrement inexact pour un propriétaire connecté est le prix accepté.
+**R39 — La page d'accueil reste statique et identique pour tous.** Elle ne lit ni cookie ni session et reste pré-rendue au build. Un propriétaire déjà connecté qui s'y rend voit donc la même page, avec les mêmes liens : « Se connecter » et « Créer mon compte » le mènent tous deux à `/tableau-de-bord`, par la redirection de R22. Il n'est pas redirigé automatiquement depuis `/`. Justification : personnaliser l'en-tête obligerait à rendre la page à chaque requête ou à l'adapter après coup dans le navigateur, pour un bénéfice mince ; le libellé légèrement inexact pour un propriétaire connecté est le prix accepté. **Précision après T3** : le proxy qui renouvelle le cookie de session ne s'exécute pas sur la page d'accueil. Une visite de `/` ne déclenche aucune lecture en base, même pour un propriétaire connecté. Il s'exécute sur les pages protégées et sur `/connexion` et `/inscription`.
 
 ### Données de test
 
@@ -274,7 +274,7 @@ E3 n'est vérifiée que si l'adresse et le mot de passe sont par ailleurs valide
 - Titre `h1` (token `title` à partir de 768px, `subtitle` en dessous) : `Tableau de bord`
 - Paragraphe (`text-secondary`) : `Connecté en tant que ` suivi de l'adresse e-mail normalisée du propriétaire, en `text-primary`. Une adresse longue passe à la ligne sans créer de défilement horizontal.
 - État vide (carte de R27 de la spécification 01) : titre `h2` (15px display 700) `Aucune location pour l'instant`, puis le texte (`text-secondary`) `L'ajout de locations arrivera dans une prochaine version.` Aucun bouton dans la carte : celui de `DESIGN.md` (« Ajouter une location ») viendra avec la fonctionnalité.
-- État de chargement : `Chargement en cours`
+- État de chargement : aucun (rendu bloquant, voir la précision de R24)
 - Contenu dans le conteneur de 1280px de la spécification 01, aligné à gauche. Pas de pied de page.
 
 ### Écran de panne de `/tableau-de-bord`
@@ -315,7 +315,7 @@ Voir R38. Textes ajoutés : `Créer mon compte`, `Se connecter`. Textes supprim�
 
 ### 3. Espace réservé et déconnexion
 
-1. `/tableau-de-bord` affiche brièvement « Chargement en cours » si la vérification n'est pas immédiate, puis le titre, « Connecté en tant que … » et la carte d'état vide.
+1. `/tableau-de-bord` affiche le titre, « Connecté en tant que … » et la carte d'état vide, d'un bloc, sans état de chargement.
 2. Recharger la page, fermer puis rouvrir le navigateur : il reste connecté (R16).
 3. Il active « Se déconnecter » : il arrive sur `/connexion`, formulaire vide, sans message.
 4. Précédent : il reste ou revient sur `/connexion`, jamais sur le contenu protégé (R19).

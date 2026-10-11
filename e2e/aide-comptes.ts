@@ -56,3 +56,65 @@ export async function cookieDeSession(page: Page) {
   const cookies = await page.context().cookies();
   return cookies.find((c) => c.name.includes("session_token"));
 }
+
+/** Ouvre le tableau de bord et attend son contenu. */
+export async function ouvrirTableauDeBord(page: Page) {
+  await page.goto("/tableau-de-bord");
+  await expect(page.getByRole("heading", { level: 1, name: "Tableau de bord" })).toBeVisible();
+}
+
+/** Active « Se déconnecter » et attend l'arrivée sur /connexion (rechargement complet). */
+export async function deconnecter(page: Page) {
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await expect(page).toHaveURL((u) => u.pathname === "/connexion");
+}
+
+/** L'en-tête Cookie à présenter pour rejouer une session relevée. */
+export async function enteteCookie(page: Page): Promise<string> {
+  const cookie = await cookieDeSession(page);
+  expect(cookie, "cookie de session").toBeDefined();
+  return `${cookie!.name}=${cookie!.value}`;
+}
+
+// Accès direct à la base de test, pour les seuls comptes du domaine quittances.test
+// (R40 de la spécification 02) : reculer ou faire expirer la session d'un compte
+// créé par le test lui-même. Le garde-fou refuse tout autre domaine.
+async function surSessionsDeTest<T>(email: string, requete: string): Promise<T[]> {
+  expect(email).toMatch(/@quittances\.test$/);
+  const { Pool } = await import("pg");
+  const { requireTestDatabaseUrl } = await import("../src/db/test-database");
+  const pool = new Pool({ connectionString: requireTestDatabaseUrl(process.env) });
+  try {
+    const resultat = await pool.query(requete, [email]);
+    return resultat.rows as T[];
+  } finally {
+    await pool.end();
+  }
+}
+
+const DE_CE_COMPTE = `user_id in (select id from "user" where email = $1)`;
+
+/** Fait expirer la session du compte (elle existe encore en base, mais périmée). */
+export async function expirerSession(email: string) {
+  await surSessionsDeTest(
+    email,
+    `update session set expires_at = now() - interval '1 hour' where ${DE_CE_COMPTE} returning id`,
+  );
+}
+
+/** Simule une session non utilisée depuis 5 jours : expiration dans 10 jours, dernière mise à jour il y a 5 jours. */
+export async function reculerSession(email: string) {
+  await surSessionsDeTest(
+    email,
+    `update session set expires_at = now() + interval '10 days', updated_at = now() - interval '5 days' where ${DE_CE_COMPTE} returning id`,
+  );
+}
+
+/** Date d'expiration de la session du compte (ms depuis 1970), ou null si elle n'existe plus. */
+export async function expirationSession(email: string): Promise<number | null> {
+  const lignes = await surSessionsDeTest<{ expires_at: Date }>(
+    email,
+    `select expires_at from session where ${DE_CE_COMPTE}`,
+  );
+  return lignes.length ? new Date(lignes[0].expires_at).getTime() : null;
+}
