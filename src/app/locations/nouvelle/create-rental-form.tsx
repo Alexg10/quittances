@@ -15,13 +15,9 @@ import { createRentalAction } from "./actions";
 export function CreateRentalForm() {
   // state : la dernière réponse du serveur. formAction : l'action à donner au
   // formulaire. pending : vrai entre l'envoi et la réponse.
-  //
   // Sans JavaScript, le navigateur envoie le formulaire en POST à la même
-  // adresse : la création aboutit et la redirection se fait. En revanche, un
-  // envoi refusé réaffiche le formulaire VIDE et sans message : sur une page
-  // qui lit la session, Next (16.4, `cacheComponents`) ne transmet pas cet
-  // état au rendu HTML, seulement à React dans le navigateur. Limite connue,
-  // contraire à R34 : voir le compte rendu de T5.
+  // adresse et le serveur renvoie la page rendue avec ce même état : les
+  // messages et les valeurs saisies sont dans le HTML (R34).
   const [state, formAction, pending] = useActionState(
     createRentalAction,
     EMPTY_RENTAL_FORM_STATE,

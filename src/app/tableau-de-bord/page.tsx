@@ -3,8 +3,11 @@
 // d'isolation entre comptes.
 //
 // Server Component, rendu à chaque requête : ce qu'il affiche dépend du cookie
-// de session. Seuls le logo et le formulaire de déconnexion sont des Client
-// Components.
+// de session. Rien ne le déclare : lire la session, donc les en-têtes de la
+// requête, suffit à ce que Next ne pré-rende pas la page (`ƒ` au build). Le
+// serveur envoie la page complète, lisible sans JavaScript ; il n'y a pas
+// d'état de chargement. Seuls le logo et le formulaire de déconnexion sont des
+// Client Components.
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect, unstable_rethrow } from "next/navigation";
@@ -30,15 +33,6 @@ import { EmptyRentals } from "./empty-rentals";
 import { RentalList } from "./rental-list";
 import { ServiceUnavailable } from "./service-unavailable";
 import { SignOutForm } from "./sign-out-form";
-
-// Rendu bloquant, voulu. Avec `cacheComponents`, Next attend d'ordinaire que la
-// lecture de la session soit placée sous <Suspense> : le contenu arrive alors
-// dans un bloc masqué, qu'un script révèle. Sans JavaScript, le propriétaire
-// ne verrait que l'état de chargement, et pas le bouton « Se déconnecter »
-// (R29). `instant = false` déclare que cette page peut faire attendre la
-// navigation : le serveur envoie le contenu complet, directement visible.
-// Conséquence : cette page n'a pas d'état de chargement.
-export const instant = false;
 
 // Le titre dépend de la session : un visiteur non connecté ne doit pas même
 // recevoir « Tableau de bord » dans le titre du document (R23).

@@ -1,10 +1,10 @@
 // Détail d'une location (spécification 03, « Page /locations/<id> »).
 // Server Component, rendu à chaque requête : ce qu'il affiche dépend de la
-// session. C'est la seule page de lecture où l'adresse e-mail du locataire
+// session, et la lire suffit à ce que Next ne pré-rende pas la page. C'est la seule page de lecture où l'adresse e-mail du locataire
 // apparaît (R43).
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import {
@@ -29,12 +29,6 @@ import { DashboardHeader } from "../../tableau-de-bord/dashboard-header";
 import { ServiceUnavailable } from "../../tableau-de-bord/service-unavailable";
 import { SignOutForm } from "../../tableau-de-bord/sign-out-form";
 import { buildRentalPath, readRentalAccess } from "../rental-access";
-import { RentalNotFound } from "../rental-not-found";
-
-// Rendu bloquant, comme /tableau-de-bord (R30) : tout s'affiche sans
-// JavaScript, et rien n'est envoyé au navigateur avant que la session et la
-// location aient été contrôlées.
-export const instant = false;
 
 // Titres génériques : jamais une adresse ni un nom de locataire dans le titre
 // du document (R43). Un visiteur non connecté ne reçoit que le titre du site.
@@ -75,12 +69,13 @@ export default async function RentalPage({
     );
   }
   if (access.kind === "not-found") {
-    // Le même écran pour la location d'un autre compte, une location inexistante
-    // et un identifiant mal formé (R5). Il est rendu comme un contenu ordinaire
-    // plutôt que par notFound() : mesuré sur cette version de Next, notFound()
-    // répond ici par un document vide que seul JavaScript remplit, et avec le
-    // code 200 (la page est reprise d'une coque pré-rendue, `cacheComponents`).
-    return <RentalNotFound />;
+    // Code HTTP 404 et écran de ./not-found.tsx : la même réponse pour la
+    // location d'un autre compte, une location inexistante et un identifiant
+    // mal formé (R5). Le code 404 est possible parce que rien n'a encore été
+    // envoyé : la page n'a ni loading.tsx ni <Suspense> au-dessus d'elle.
+    // Limite mesurée sur cette version de Next : le document de cette réponse
+    // est vide, et c'est JavaScript qui y dessine l'écran.
+    notFound();
   }
 
   const { rental } = access;

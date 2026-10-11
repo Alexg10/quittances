@@ -62,11 +62,19 @@ Spécification `docs/specs/03-gestion-des-locations.md` rédigée par `chef-de-p
 
 **T5 développée** par `developpeur-front` en `opus` (coupée une fois par la limite d'utilisation, puis reprise) : `src/app/locations/` (`/locations/nouvelle` et son action de création, `/locations/[id]` détail, écran « Location introuvable », `rental-access.ts` qui contrôle la session puis l'appartenance), `matcher` du proxy étendu à `/locations/:path*`. Isolation vérifiée à deux comptes dans le navigateur : réponse identique pour la location d'un autre, une location inexistante et un identifiant mal formé. T3, T4 et T5 commitées ensemble. Suites : lint propre, 2148 Vitest, 62 d'intégration, 215 e2e et 1 ignoré.
 
-**Décision d'architecture attendue de l'utilisateur** (trouvée en T5) : sous `cacheComponents`, toute page qui lit la session est reprise d'une coque vide. Conséquences mesurées : sans JavaScript, un formulaire refusé revient vide et sans message ; `notFound()` et `redirect()` appelés par une page répondent 200 avec un document que seul JavaScript remplit. « Location introuvable » répond donc 200 (contenu identique dans tous les cas), pas 404. Options : (a) retirer `cacheComponents` (vrais 404 et 307, erreurs sans JavaScript ; change les fiches 01 et 11, suites à rejouer) ; (b) le garder et ne plus exiger le fonctionnement sans JavaScript dans l'espace connecté (amender R34, CA24, CA29, CA40).
+**Décision d'architecture, prise par l'utilisateur le 2026-10-11 : retirer `cacheComponents`** (« il nous faut les bons codes HTTP »). Sous ce réglage, toute page qui lit la session était reprise d'une coque vide : `notFound()` et `redirect()` appelés par une page répondaient 200, et sans JavaScript un formulaire refusé revenait vide. Attendu après retrait : « Location introuvable » en 404, redirections de page en vrais 307, erreurs de formulaire réaffichées sans JavaScript, routes protégées en `ƒ`.
 
-Autres points ouverts : une date invalide ne peut pas être réaffichée dans un champ `type="date"` (CA24) ; deux lectures de session par requête sous `/locations` malgré `cache` de React, à comprendre.
+**Retrait fait et commité** : `next.config.ts` sans `cacheComponents` ni `partialPrefetching`, plus aucun `export const instant`. Routes : `○ /`, `○ /connexion`, `○ /inscription`, `ƒ` pour `/tableau-de-bord` et tout `/locations`. Mesuré par le développeur : « Location introuvable » répond 404 avec un corps identique dans tous les cas ; chaque page protégée redirige elle-même en 307 sans session ; les erreurs de `/locations/nouvelle` se réaffichent sans JavaScript ; aucune page protégée servie depuis un cache ; plus de page précédente masquée dans le DOM. Suites : lint propre, 2148 Vitest, 62 d'intégration, 215 e2e et 1 ignoré.
 
-Ensuite : recette `qa` de T5 (première tranche de bout en bout), puis T6.
+**Décision attendue de l'utilisateur** : `notFound()` répond bien 404, mais son document est vide sans JavaScript (coque d'erreur de Next, l'écran est posé par le script). Options : (A) garder ainsi ; (C) faire lire la location par le proxy, qui réécrit vers une page ordinaire avec le code 404, ce qui rompt la règle « le proxy ne lit jamais une location ».
+
+À faire avec T6 : page 404 générale en français (`app/not-found.tsx`, aujourd'hui la page anglaise de Next) ; ne donner de valeur à un champ de date que si elle est valide (avertissement de console) ; mémoriser `readOwner` du tableau de bord par requête.
+
+À surveiller : le test e2e « Fixation de session » (`e2e/connexion.spec.ts`) a échoué une fois sur trois passages chez le développeur, cause non établie.
+
+À reconsidérer, rendus possibles par le retrait (rien n'est changé) : lire `retour` dans l'adresse de `/connexion` plutôt que dans `Referer` ; retirer du proxy la redirection sans session et celle de `/locations`, que les pages font elles-mêmes.
+
+Étape en cours : recette `qa` de T5 et non-régression de l'espace connecté. Puis T6.
 
 Prompts des quatre agents ajustés avant de lancer (`02eade7`) : secrets, base de test et ports ; dossier de travail propre à chaque agent ; mutations avec `perl` ; liens internes en `next/link` ; critère d'isolation négatif dans chaque spécification.
 
@@ -92,6 +100,7 @@ Prompts des quatre agents ajustés avant de lancer (`02eade7`) : secrets, base d
 - Authentification : Better Auth, e-mail et mot de passe ; les comptes et les sessions vivent dans la base du projet.
 - Base Neon en région Europe (Francfort).
 - Les routes internes passent par `next/link`, jamais par un `<a>` natif : pas de rechargement complet de la page.
+- `cacheComponents` retiré de `next.config.ts` le 2026-10-11 : les bons codes HTTP (404, 307) et les formulaires sans JavaScript priment sur le rendu partiel.
 - Rythme allégé à partir de la fonctionnalité 03 : recette `qa` à la première tranche de bout en bout et à la fin, pas après chaque tâche ; e2e complets une fois avant chaque commit.
 - Agents de développement en `sonnet` par défaut ; l'orchestrateur demande `opus` à l'appel pour les tâches difficiles (authentification, isolation des données, logique de dates).
 

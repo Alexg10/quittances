@@ -3,7 +3,8 @@
 // identifiant inconnu et un identifiant mal formé : il ne reçoit aucune prop, il
 // ne peut donc rien afficher qui dépende de la demande.
 // Il garde l'en-tête complet (R42) : seul un propriétaire connecté le voit.
-// Les pages le rendent elles-mêmes, après avoir contrôlé la session.
+// Les pages contrôlent la session avant d'appeler notFound(), qui l'affiche
+// (voir ./[id]/not-found.tsx).
 import Link from "next/link";
 
 import { DASHBOARD_PATH } from "@/auth/return-path";

@@ -1,6 +1,7 @@
 // Page de création d'une location (spécification 03, « Formulaire de
-// location »). Server Component : il vérifie la session et pose le titre ; seuls
-// le formulaire et l'en-tête sont des Client Components.
+// location »). Server Component, rendu à chaque requête parce qu'il lit la
+// session : il la vérifie et pose le titre ; seuls le formulaire et l'en-tête
+// sont des Client Components.
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -11,10 +12,6 @@ import { ServiceUnavailable } from "../../tableau-de-bord/service-unavailable";
 import { SignOutForm } from "../../tableau-de-bord/sign-out-form";
 import { buildRentalPath, readOwnerAccess } from "../rental-access";
 import { CreateRentalForm } from "./create-rental-form";
-
-// Rendu bloquant, comme /tableau-de-bord : la page lit la session, et le
-// formulaire doit s'afficher sans JavaScript (R30, R34).
-export const instant = false;
 
 // Un visiteur non connecté ne reçoit pas même le titre de la page (R28).
 export async function generateMetadata(): Promise<Metadata> {

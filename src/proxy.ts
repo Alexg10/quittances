@@ -10,8 +10,9 @@
 //    /connexion ou /inscription (R22), ou /locations, qui n'a pas de contenu
 //    (R27 de la spécification 03).
 //
-// Ces redirections sont un confort : faites ici, ce sont de vraies
-// réponses HTTP, qui fonctionnent sans JavaScript et n'envoient aucun contenu.
+// Ces redirections sont un confort : chaque page protégée redirige aussi
+// elle-même. Faites ici, elles partent plus tôt, avant tout rendu, et leur
+// réponse n'a aucun contenu.
 //
 // Il refuse aussi, par un code 400, une adresse illisible sous /locations/
 // (voir isDecodable).
@@ -83,9 +84,8 @@ export async function proxy(request: NextRequest) {
       );
     }
     // /locations, pour un propriétaire connecté : le tableau de bord. La page
-    // fait la même redirection, mais la sienne a besoin de JavaScript ; celle-ci
-    // est une réponse HTTP. Seule l'adresse exacte est concernée : le proxy ne
-    // regarde jamais ce qui suit /locations/.
+    // fait la même redirection ; celle-ci la devance. Seule l'adresse exacte
+    // est concernée : le proxy ne regarde jamais ce qui suit /locations/.
     if (session === "valid" && pathname === RENTALS_PATH) {
       return NextResponse.redirect(new URL(DASHBOARD_PATH, request.url));
     }
@@ -119,8 +119,8 @@ export const config = {
   //
   // Pour protéger une nouvelle section, ajouter ici "/section/:path*". Un oubli
   // ne rendrait rien visible : la page reste protégée par getCurrentOwner().
-  // Elle y perdrait seulement la redirection sans JavaScript et la
-  // prolongation de la session pendant qu'on la consulte.
+  // Elle y perdrait seulement la prolongation de la session pendant qu'on la
+  // consulte, et la redirection faite avant tout rendu.
   //
   // "/locations/:path*" couvre /locations et tout ce qui est dessous (R28 de la
   // spécification 03), que l'adresse existe ou non. Le proxy n'y lit que la

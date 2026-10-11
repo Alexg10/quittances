@@ -33,15 +33,17 @@ export type Owner = {
 // composants d'une même page partagent une seule lecture en base, et rien n'est
 // conservé d'une requête à l'autre ni d'un visiteur à l'autre.
 //
-// Lire les en-têtes est une donnée de requête : avec `cacheComponents`, un
-// composant qui appelle cette fonction ne peut pas être pré-rendu au build. Il
-// est soit placé sous une limite <Suspense>, soit rendu par une page qui
-// déclare `instant = false` (rendu bloquant, voir /tableau-de-bord).
+// Lire les en-têtes, c'est lire une donnée de la requête : une page qui appelle
+// cette fonction ne peut pas être pré-rendue au build. Next la rend à chaque
+// requête (symbole `ƒ` de `pnpm build`), sans rien avoir à déclarer.
 export const getCurrentOwner = cache(async (): Promise<Owner | null> => {
   // Les en-têtes sont lus en premier, et l'ordre compte : pendant `pnpm build`,
-  // il n'y a pas de requête et headers() ne répond jamais. Le pré-rendu s'arrête
-  // donc ici, sans atteindre getAuth() : le build n'a besoin ni du secret ni de
-  // la base.
+  // Next essaie de pré-rendre chaque page. Il n'y a alors pas de requête, et
+  // headers() lève une erreur interne de Next, qui lui signale que la page est
+  // dynamique. L'exécution s'arrête donc ici, sans atteindre getAuth() : le
+  // build n'a besoin ni du secret ni de la base.
+  // Qui entoure cet appel d'un try doit rendre cette erreur à Next
+  // (unstable_rethrow) : avalée, elle laisserait la page se pré-rendre.
   const requestHeaders = await headers();
   const session = await getAuth().api.getSession({
     headers: requestHeaders,

@@ -5,12 +5,12 @@
 // la spécification 02), et seul le navigateur peut le déclencher.
 //
 // Pourquoi un rechargement complet, alors que tout le reste de l'application
-// navigue sans recharger : Next garde dans le document, masquées, les dernières
-// pages affichées, pour les restituer telles quelles au retour en arrière.
-// Après une navigation côté client vers /connexion, « Connecté en tant que … »
-// resterait donc dans la page, invisible mais présent. Recharger le document
-// vide toute la mémoire de l'application dans le navigateur (doc Next,
-// « Preserving UI state », section « State and authentication »).
+// navigue sans recharger : le routeur de Next garde en mémoire, dans le
+// navigateur, les pages déjà affichées, pour les restituer au retour en
+// arrière. Après une simple navigation vers /connexion, les pages du
+// propriétaire resteraient dans cette mémoire. Recharger le document la vide
+// entièrement : après une déconnexion, rien de ce compte ne subsiste dans
+// l'onglet, quoi que le routeur ait gardé.
 import { useTransition, type FormEvent } from "react";
 
 import { SIGN_IN_PATH } from "@/auth/return-path";
