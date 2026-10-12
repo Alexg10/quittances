@@ -48,6 +48,15 @@ Dernière mise à jour : 2026-10-10
 
 ### Prochaine étape
 
+Cinquième fonctionnalité : **envoi d'e-mails** (la quittance part au locataire en pièce jointe). Deux choses à expliquer puis décider, une à la fois, avant la spécification :
+
+1. Le choix du **service d'envoi** (API transactionnelle ou SMTP, délivrabilité : SPF, DKIM, DMARC, domaine d'expédition, environnement de test sans envoi réel).
+2. L'**accord exprès du locataire** pour recevoir sa quittance par voie électronique, à enregistrer par location (reporté de la fonctionnalité 04).
+
+Cette fonctionnalité débloque aussi la réinitialisation du mot de passe et la vérification de l'adresse du propriétaire.
+
+### Fonctionnalité 04 — quittance de loyer en PDF (terminée)
+
 Quatrième fonctionnalité, acceptée par l'utilisateur (branche `quittance-pdf`) : **quittance de loyer en PDF** (produire le document à partir d'une location et d'un mois). Elle demande deux choses avant la spécification, à expliquer puis décider une à la fois :
 
 1. Le choix technique de la **génération de PDF** : **décidé le 2026-10-12**, composants React pour PDF (`@react-pdf/renderer`), produits sur le serveur et servis par un Route Handler. Compatibilité avec React 19 et Next 16 à vérifier en premier par le développeur ; repli sur un dessin bas niveau (`pdf-lib`) sinon.
@@ -91,9 +100,9 @@ Non vérifié par la recette finale : la borne exacte de minuit à Paris dans un
 
 Pistes d'amélioration du document, non retenues pour l'instant : la moitié basse de la page est vide (espace de signature), la mention de réserve est petite.
 
-**Étape en cours : accord de l'utilisateur pour fusionner `quittance-pdf` dans `main`.** Fiches 15 à 18 écrites.
+**Fonctionnalité 04 terminée, fusionnée dans `main` le 2026-10-12** (`b6af9e5`, accord de l'utilisateur). Fiches 15 à 18 écrites.
 
-Puis, dans l'ordre proposé : envoi d'e-mails (choix du service ; débloque la réinitialisation du mot de passe et la vérification de l'adresse) ; échéances et tâches planifiées (le jour J, confirmation, quittance ou relance) ; tableau de bord des loyers et exports.
+Ordre proposé pour la suite : envoi d'e-mails ; échéances et tâches planifiées (le jour J, confirmation, quittance ou relance) ; tableau de bord des loyers et exports.
 
 ### Ensuite
 
