@@ -37,69 +37,34 @@ Dernière mise à jour : 2026-10-10
 25. T5, page d'accueil : « Créer mon compte » et « Se connecter » en `Link`, section « Les inscriptions ouvrent bientôt » supprimée, tests de la fonctionnalité 01 adaptés.
 26. **Fonctionnalité 02 terminée**, commitée et fusionnée dans `main`. État final : lint propre ; build `○ /`, `○ /connexion`, `○ /inscription`, `ƒ /tableau-de-bord` ; 1180 tests Vitest ; 23 tests d'intégration ; 215 tests e2e réussis et 1 ignoré (navigation de l'en-tête sur mobile, absente sous 768px).
 
+27. Troisième fonctionnalité, **gestion des locations** : spécification `docs/specs/03-gestion-des-locations.md` validée (6 tâches, option légère sans clé de soumission ni version). Prompts des agents ajustés (`02eade7`) et **rythme allégé** adopté : recette `qa` à la première tranche de bout en bout et à la fin, e2e complets une fois avant chaque commit, mutations réservées à l'isolation et aux montants, `opus` pour les seules tâches sensibles.
+28. T1 (`1f018b1`) : table `rental`, migration `drizzle/0001_locations.sql`, fonctions d'accès de `src/rentals/rental-store.ts`, toutes filtrées sur le propriétaire dans la requête SQL ; tests d'intégration d'isolation à deux comptes.
+29. T2 (`559292c`) : règles pures de `src/rentals/` (montants en centimes sans calcul flottant, dates `AAAA-MM-JJ`, statut à la date du jour à Paris, validation d'ensemble) ; 860 tests Vitest, indépendants du fuseau.
+30. T3, T4, T5 (`ce29815`) : le tableau de bord devient la liste des locations ; formulaire de location ; `/locations/nouvelle`, `/locations/[id]`, écran « Location introuvable ».
+31. **Décision d'architecture : `cacheComponents` retiré** (`2ef34f1`), pour avoir les bons codes HTTP. Routes protégées rendues à chaque requête (`ƒ`), vrais 404 et 307, erreurs de formulaire réaffichées sans JavaScript. Fiche 14.
+32. T6 (`afc3ea4`) : modifier, mettre fin, rouvrir, supprimer ; page 404 générale en français. À retenir : un argument passé par `bind` à une Server Action n'est ni chiffré ni signé ; la protection est le filtre sur le propriétaire. Fiche 13.
+33. Recette complète (`3f0efcd`) : isolation tenue sur les quatre actions avec l'identifiant remplacé partout. **Un bug trouvé et corrigé** (`d76fe76`) : une écriture qui dépassait le délai du pilote s'exécutait plus tard dans Postgres. `runWriteTransaction` (`src/db/index.ts`) pose `lock_timeout` et `statement_timeout` pour la transaction et ne rend la connexion au pool qu'après un `COMMIT` réussi. Fiche 08 complétée.
+34. **Fonctionnalité 03 terminée**, fusionnée dans `main`. État final : lint sans erreur ni avertissement ; build `○` pour `/`, `/connexion`, `/inscription`, `ƒ` pour `/tableau-de-bord` et tout `/locations` ; 2240 tests Vitest ; 68 tests d'intégration ; 325 tests e2e réussis et 1 ignoré.
+
 ### Prochaine étape
 
-Fonctionnalité 03 : **gestion des locations** (branche `gestion-des-locations`) : créer, lister, consulter, modifier et retirer ses locations (bien, locataire et son e-mail, loyer et charges, jour d'échéance). Première donnée métier, donc première mise à l'épreuve de l'isolation entre comptes. Aucun nouveau choix technique.
+Quatrième fonctionnalité, proposée à l'utilisateur : **quittance de loyer en PDF** (produire le document à partir d'une location et d'un mois). Elle demande deux choses avant la spécification, à expliquer puis décider une à la fois :
 
-Spécification `docs/specs/03-gestion-des-locations.md` rédigée par `chef-de-projet` et **validée** : 44 règles, 43 critères, 6 tâches. Le tableau de bord devient la liste des locations ; six routes sous `/locations`. Aucun calcul d'échéance dans cette version. Décisions : dix informations par location, un seul locataire, adresses françaises, supprimer efface et mettre fin archive (« Rouvrir »), limite de 100 locations par compte, **option légère** (ni clé de soumission ni numéro de version : doublon possible sans JavaScript, dernier enregistrement qui l'emporte), tokens `success-text`, `success-surface`, `warning-text`, `warning-surface` ajoutés à `DESIGN.md`.
+1. Le choix technique de la **génération de PDF**.
+2. Les **informations du bailleur** (nom, adresse), que l'inscription ne demande pas, et ce qu'une quittance doit mentionner (à faire vérifier : le chef de projet a signalé ne pas pouvoir affirmer le droit locatif).
 
-| Tâche | Contenu | Modèle | Recette `qa` |
-| --- | --- | --- | --- |
-| T1 | Schéma, migration, fonctions d'accès filtrées par propriétaire | opus | non (pas d'interface) |
-| T2 | Règles pures : montants, jour d'échéance, dates, statut | sonnet | non |
-| T3 | Tableau de bord, liste, chip de statut, tests existants à adapter | sonnet | non |
-| T4 | Formulaire de location (affichage seul) | sonnet | non |
-| T5 | Création, détail, « introuvable », protection | opus | oui |
-| T6 | Modification, fin, réouverture, suppression | opus | oui, recette complète |
-
-**Rythme allégé**, décidé par l'utilisateur le 2026-10-11 : recette `qa` après T5 et à la fin seulement ; après chaque agent, l'orchestrateur ne relance que le lint et les tests rapides, et les tests e2e complets une fois avant chaque commit ; mutations réservées à l'isolation et aux montants ; `opus` pour T1, T5 et T6 seulement.
-
-**T1 terminée et commitée** : table `rental` (migration `drizzle/0001_locations.sql`, appliquée aux deux bases), sept fonctions d'accès dans `src/rentals/rental-store.ts`, toutes filtrées sur le propriétaire dans la requête SQL, `src/rentals/rental-id.ts`, 39 tests d'intégration à deux comptes (62 au total). Aucun accès à la table hors de ces fonctions. 
-
-**T2 terminée et commitée** : règles pures dans `src/rentals/` (`rental-amount`, `rental-dates`, `rental-due-day`, `rental-text`, `rental-messages`, `rental-validation`), sans import serveur ; 860 tests Vitest ajoutés (2027 au total), identiques sous trois fuseaux horaires ; mutations sur les montants détectées. Ambiguïtés de la spécification laissées en l'état : date faite d'espaces (L20), plus de 500 espaces dans un montant, UUID d'une autre version que 4 accepté par `isRentalId`.
-
-**T3 et T4 terminées** : le tableau de bord est la liste des locations (groupes « en cours » et « terminées », chip de statut, état vide), `src/components/rental-form.tsx` est le formulaire de location. 121 tests Vitest ajoutés (2148 au total).
-
-**T5 développée** par `developpeur-front` en `opus` (coupée une fois par la limite d'utilisation, puis reprise) : `src/app/locations/` (`/locations/nouvelle` et son action de création, `/locations/[id]` détail, écran « Location introuvable », `rental-access.ts` qui contrôle la session puis l'appartenance), `matcher` du proxy étendu à `/locations/:path*`. Isolation vérifiée à deux comptes dans le navigateur : réponse identique pour la location d'un autre, une location inexistante et un identifiant mal formé. T3, T4 et T5 commitées ensemble. Suites : lint propre, 2148 Vitest, 62 d'intégration, 215 e2e et 1 ignoré.
-
-**Décision d'architecture, prise par l'utilisateur le 2026-10-11 : retirer `cacheComponents`** (« il nous faut les bons codes HTTP »). Sous ce réglage, toute page qui lit la session était reprise d'une coque vide : `notFound()` et `redirect()` appelés par une page répondaient 200, et sans JavaScript un formulaire refusé revenait vide. Attendu après retrait : « Location introuvable » en 404, redirections de page en vrais 307, erreurs de formulaire réaffichées sans JavaScript, routes protégées en `ƒ`.
-
-**Retrait fait et commité** : `next.config.ts` sans `cacheComponents` ni `partialPrefetching`, plus aucun `export const instant`. Routes : `○ /`, `○ /connexion`, `○ /inscription`, `ƒ` pour `/tableau-de-bord` et tout `/locations`. Mesuré par le développeur : « Location introuvable » répond 404 avec un corps identique dans tous les cas ; chaque page protégée redirige elle-même en 307 sans session ; les erreurs de `/locations/nouvelle` se réaffichent sans JavaScript ; aucune page protégée servie depuis un cache ; plus de page précédente masquée dans le DOM. Suites : lint propre, 2148 Vitest, 62 d'intégration, 215 e2e et 1 ignoré.
-
-Décision de l'utilisateur sur l'écran « Location introuvable » : option (A). Il répond 404, et son document est vide sans JavaScript (coque d'erreur de Next) ; c'est accepté plutôt que de faire lire la location par le proxy. Inscrit en tête de la spécification 03.
-
-À faire avec T6 : page 404 générale en français (`app/not-found.tsx`, aujourd'hui la page anglaise de Next) ; ne donner de valeur à un champ de date que si elle est valide (avertissement de console) ; mémoriser `readOwner` du tableau de bord par requête.
-
-À surveiller : le test e2e « Fixation de session » (`e2e/connexion.spec.ts`) a échoué une fois sur trois passages chez le développeur, cause non établie.
-
-À reconsidérer, rendus possibles par le retrait (rien n'est changé) : lire `retour` dans l'adresse de `/connexion` plutôt que dans `Referer` ; retirer du proxy la redirection sans session et celle de `/locations`, que les pages font elles-mêmes.
-
-**Recette `qa` de T3 à T5 et non-régression faites** : conforme avec réserves, aucun bug bloquant ni majeur, le retrait de `cacheComponents` n'a rien cassé. Codes 404 et 307 confirmés, isolation à deux comptes sans fuite (liste, détail, création avec champs parasites, même onglet), 0 violation axe, panne de base et « Réessayer » vérifiés. Nouveaux `e2e/locations.spec.ts` et `e2e/aide-locations.ts` ; suite e2e à 259 réussis et 1 ignoré. Le test « Fixation de session » n'a pas été reproduit (160 répétitions) : cause toujours inconnue.
-
-Réserves mineures, acceptées : sans le proxy, le 307 produit par la page contient la chaîne constante « Location introuvable » (aucune donnée) ; une adresse à l'encodage illisible répond 400 et non l'écran introuvable (précision ajoutée à la spécification).
-
-Incident : la `qa` a arrêté le serveur de développement de l'utilisateur (port 3000) par un `pkill -f next-server`. Consigne ajoutée aux trois agents : arrêter un serveur par son numéro de processus, jamais par son nom.
-
-**T6 développée, testée et commitée** : `src/app/locations/[id]/` (`actions.ts` avec le contrôle commun session puis location filtrée, pages `modifier`, `fin`, `supprimer`, `confirm-form`, `rental-reminder`), page 404 générale en français (`src/app/not-found.tsx`, textes validés par l'utilisateur), champ de date vidé quand la valeur est invalide. 92 tests Vitest ajoutés (2240 au total). Suites : lint propre, 62 tests d'intégration, 259 e2e et 1 ignoré. À retenir : un argument passé par `bind` à une Server Action n'est ni chiffré ni signé ; la protection est le filtre sur le propriétaire.
-
-**Recette complète faite** par `qa` (coupée une fois par la limite d'utilisation, puis reprise) : conforme avec réserves. Les quatre actions résistent à toutes les attaques d'isolation (identifiant lié remplacé dans le champ `$ACTION`, le corps, l'adresse et `Referer` ; POST direct ; champs parasites) : rien d'écrit chez l'autre compte, réponse identique à « inexistante ». La suppression n'a lieu que par POST. 0 violation axe. Nouveau `e2e/locations-gestion.spec.ts` (33 tests) ; suite e2e à 325 réussis et 1 ignoré. Fiches 13 et 14 écrites, fiches 01 et 11 corrigées. Commité (`3f0efcd`).
-
-**Bug B1 (majeur) corrigé et commité.** Une écriture qui dépassait le délai de 5 s affichait E8 mais s'exécutait plus tard dans Postgres : le `query_timeout` du pilote `pg` est un minuteur côté client, qui n'annule rien côté serveur. Un délai de session ne tient pas derrière le pooler de Neon (PgBouncer en mode transaction : ignoré, refusé, ou fuyant d'un client à l'autre). Correctif : `runWriteTransaction` dans `src/db/index.ts`, seul moyen d'ouvrir une transaction d'écriture. Elle pose `lock_timeout` (3 s) et `statement_timeout` (4 s) pour la transaction, dérivés du délai du pilote (5 s), et ne rend la connexion au pool qu'après un `COMMIT` réussi ; sinon elle la détruit (une transaction interrompue par le délai du pilote laissait sinon une connexion « empoisonnée », où l'écriture suivante n'était jamais validée). Deux tests d'intégration le prouvent (`rental-store.timeout` et `rental-store.driver-timeout`), chacun échouant sans le correctif. Coût : environ 70 ms de plus par écriture.
-
-Reste exposé, noté pour avant l'ouverture au public : les écritures de Better Auth. Mesuré : la session créée à la connexion peut s'exécuter après son délai (session orpheline, jeton remis à personne) ; la déconnexion aussi (état final cohérent). L'inscription est dans une transaction, mais par `db.transaction` de l'adaptateur, donc exposée à la connexion empoisonnée. Remèdes possibles : un délai par défaut sur le rôle ou la base (par migration, sur chaque branche Neon), et fournir à l'adaptateur un objet dont `transaction` passe par `runWriteTransaction`.
-
-Écart mineur accepté : un identifiant écrit avec un encodage (`%2D` pour le tiret) sert la page de son propriétaire, Next décodant l'adresse avant le code ; aucune fuite.
-
-**Fonctionnalité 03 prête à fusionner** : lint sans erreur ni avertissement ; 2240 tests Vitest ; 68 tests d'intégration ; 325 tests e2e réussis et 1 ignoré. Reste : la fusion dans `main`, avec l'accord de l'utilisateur.
-
-Prompts des quatre agents ajustés avant de lancer (`02eade7`) : secrets, base de test et ports ; dossier de travail propre à chaque agent ; mutations avec `perl` ; liens internes en `next/link` ; critère d'isolation négatif dans chaque spécification.
+Puis, dans l'ordre proposé : envoi d'e-mails (choix du service ; débloque la réinitialisation du mot de passe et la vérification de l'adresse) ; échéances et tâches planifiées (le jour J, confirmation, quittance ou relance) ; tableau de bord des loyers et exports.
 
 ### Ensuite
 
+- **Écritures de Better Auth après leur délai** (mesuré en fin de fonctionnalité 03) : la session créée à la connexion et la déconnexion peuvent s'exécuter après le délai du pilote ; l'inscription passe par `db.transaction` de l'adaptateur, exposée à la connexion laissée dans une transaction ouverte. Remèdes : un délai par défaut sur le rôle ou la base (par migration, sur chaque branche Neon), et fournir à l'adaptateur un objet dont `transaction` passe par `runWriteTransaction`.
+- **Rendus possibles par le retrait de `cacheComponents`**, non faits : lire le paramètre `retour` dans l'adresse de `/connexion` plutôt que dans l'en-tête `Referer` ; retirer du proxy la redirection sans session et celle de `/locations`, que les pages font elles-mêmes.
+- **Limites acceptées de la fonctionnalité 03** : « Location introuvable » répond 404 mais son document est vide sans JavaScript ; une action refusée sans JavaScript affiche la page 404 générale ; une adresse à l'encodage illisible répond 400 ; un identifiant écrit avec un encodage (`%2D`) sert la page de son propriétaire ; doublon possible à la création sans JavaScript ; le dernier enregistrement l'emporte entre deux onglets ; limite de 100 locations non garantie sous concurrence.
+- **Test instable non expliqué** : « Fixation de session » (`e2e/connexion.spec.ts`) a échoué une fois, jamais reproduit depuis (160 répétitions, plus de dix passages complets).
 - **Avant toute ouverture au public** (Q8 de la spécification 02) : limitation des tentatives de connexion et d'inscription ; réinitialisation du mot de passe et vérification de l'adresse (demandent le service d'envoi d'e-mails) ; écart de temps de réponse entre adresse inconnue et mot de passe faux ; mentions légales et information sur les données personnelles ; suppression de compte.
 - **Limites connues** : environ 10 s avant l'écran de panne quand la base ne répond pas du tout (proxy puis page, 5 s chacun) ; sans en-tête `Referer`, le retour vers la page demandée est perdu ; sans JavaScript, une déconnexion pendant une panne de base affiche « Internal Server Error » ; avertissement `sslmode` du pilote `pg` au démarrage.
 - **Reportés de la fonctionnalité 01** : tokens de taille en `px` (agrandir le texte seul dans le navigateur n'a pas d'effet, envisager `rem`) ; seul Chromium est configuré dans Playwright (Safari, Firefox et un vrai téléphone ne sont pas vérifiés) ; `hover:` de Tailwind 4 inactif sur écran tactile ; contraste des couleurs sémantiques `success` et `warning` pour du texte (à traiter avec les statuts de loyer).
-- Choix techniques à expliquer et décider le moment venu : génération de PDF, envoi d'e-mails, tâches planifiées.
+- Choix techniques à expliquer et décider le moment venu : envoi d'e-mails, tâches planifiées.
 - Le nom du propriétaire n'est pas demandé à l'inscription : à ajouter quand les quittances en auront besoin.
 - Les comptes `@quittances.test` de la base de test peuvent être purgés à tout moment ; chaque exécution de `pnpm test:e2e` en crée.
 
