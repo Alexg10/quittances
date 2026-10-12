@@ -76,9 +76,10 @@ test.describe("Locations : liste et création", () => {
     await expect(page).toHaveTitle("Tableau de bord — Quittances");
     await expect(page.getByRole("heading", { level: 2 })).toHaveText("Aucune location pour l'instant");
     // Liens désignés par leur nom (T5 ajoute « Archives »).
-    for (const nom of ["Quittances, tableau de bord", "Mes informations", "Ajouter une location"]) {
+    for (const nom of ["Quittances, tableau de bord", "Mes informations", "Archives", "Ajouter une location"]) {
       await expect(page.getByRole("link", { name: nom, exact: true })).toHaveCount(1);
     }
+    await expect(page.getByRole("link", { name: "Archives", exact: true })).toHaveAttribute("href", "/archives");
     await expect(page.getByRole("button")).toHaveCount(1);
     await poserTemoin(page);
 
@@ -434,7 +435,9 @@ test.describe("Locations : liste et création", () => {
     expect(sansEspacesSpeciales(await valeurDetail(page, "Total charges comprises"))).toBe("900,00 €");
     await expect(page.getByRole("link", { name: "Modifier", exact: true })).toHaveAttribute("href", `/locations/${L.id}/modifier`);
     await expect(page.getByRole("link", { name: "Modifier la fin de la location" })).toHaveAttribute("href", `/locations/${L.id}/fin`);
-    await expect(page.getByRole("link", { name: "Supprimer" })).toHaveAttribute("href", `/locations/${L.id}/supprimer`);
+    // T5 : une location terminée sans quittance a le lien Archiver, puis Supprimer (R43 de la spécification 04).
+    await expect(page.getByRole("link", { name: "Archiver", exact: true })).toHaveAttribute("href", `/locations/${L.id}/archiver`);
+    await expect(page.getByRole("link", { name: "Supprimer", exact: true })).toHaveAttribute("href", `/locations/${L.id}/supprimer`);
     await expect(page.getByRole("link", { name: "Mettre fin à la location" })).toHaveCount(0);
     await expect(page.locator(`a[href="/locations/${L.id}"]`)).toHaveCount(0);
     const terminee = page.getByRole("main").getByText("Terminée", { exact: true });
@@ -700,6 +703,8 @@ test.describe("Locations : protection et codes HTTP", () => {
         "/tableau-de-bord",
         "/locations",
         "/locations/nouvelle",
+        "/archives",
+        `/locations/${la.id}/archiver`,
         `/locations/${la.id}`,
         `/locations/${UUID_INCONNU}`,
         `/locations/${la.id}/modifier`,
@@ -707,7 +712,7 @@ test.describe("Locations : protection et codes HTTP", () => {
         `/locations/${la.id}/supprimer`,
         `/locations/${la.id}/autre`,
       ];
-      const interdits = ["SECRET-", "Location introuvable", "Ajouter une location", "Adresse e-mail du locataire", "Se déconnecter", "Modifier la location"];
+      const interdits = ["SECRET-", "Aucune location archivée", "Archiver cette location", "Location introuvable", "Ajouter une location", "Adresse e-mail du locataire", "Se déconnecter", "Modifier la location"];
       for (const [cas, entete] of [
         ["sans cookie", undefined],
         ["cookie inventé", inventé],
@@ -755,6 +760,8 @@ test.describe("Locations : protection et codes HTTP", () => {
         "/tableau-de-bord",
         "/locations",
         "/locations/nouvelle",
+        "/archives",
+        `/locations/${UUID_INCONNU}/archiver`,
         `/locations/${UUID_INCONNU}`,
         `/locations/${UUID_INCONNU}/autre`,
       ]) {
@@ -808,7 +815,7 @@ test.describe("Locations : protection et codes HTTP", () => {
     expect(redirection.headers().location).toBe("/tableau-de-bord");
     await page.goto("/locations");
     await expect(page).toHaveURL(/\/tableau-de-bord$/);
-    for (const chemin of ["/tableau-de-bord", "/locations/nouvelle", `/locations/${la.id}`, `/locations/${UUID_INCONNU}`]) {
+    for (const chemin of ["/tableau-de-bord", "/locations/nouvelle", "/archives", `/locations/${la.id}/archiver`, `/locations/${la.id}`, `/locations/${UUID_INCONNU}`]) {
       const r = await page.request.get(chemin);
       expect(r.headers()["cache-control"], chemin).toMatch(/private|no-store/);
     }

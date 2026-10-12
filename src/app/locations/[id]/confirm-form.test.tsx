@@ -15,6 +15,8 @@ const E8 = "Le service est momentanément indisponible. Réessayez dans quelques
 const USAGES = [
   { nom: "réouverture", label: "Rouvrir la location", pendingLabel: "Réouverture en cours", cas: "CA37" },
   { nom: "suppression", label: "Supprimer définitivement", pendingLabel: "Suppression en cours", cas: "CA38" },
+  { nom: "archivage", label: "Archiver la location", pendingLabel: "Archivage en cours", cas: "CA49" },
+  { nom: "restauration", label: "Restaurer la location", pendingLabel: "Restauration en cours", cas: "CA51" },
 ] as const;
 
 function setup(

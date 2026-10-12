@@ -234,3 +234,28 @@ describe("ReceiptList — liens (R34, R36, CA24, CA33)", () => {
     }
   });
 });
+
+describe("ReceiptList — canDelete={false}, location archivée (R39, CA50)", () => {
+  it("CA50 — les liens Télécharger restent, aucun lien Supprimer", () => {
+    render(<ReceiptList receipts={[MARS, JANVIER]} canDelete={false} />);
+
+    expect(screen.getAllByRole("link").map((lien) => lien.getAttribute("href"))).toEqual([
+      `/quittances/${ID_MARS}/pdf`,
+      `/quittances/${ID_JANVIER}/pdf`,
+    ]);
+    expect(screen.queryByRole("link", { name: /^Supprimer/ })).not.toBeInTheDocument();
+  });
+
+  it("CA50 — les lignes gardent leur contenu (mois, total, référence)", () => {
+    render(<ReceiptList receipts={[JANVIER]} canDelete={false} />);
+
+    const texte = normaliser(ligne(0).textContent);
+    expect(texte).toMatch(/Janvier 2026.*425,50 € charges comprises.*Référence 2026-01-3F9A1C2E/);
+  });
+
+  it("CA24 — canDelete={true} explicite : les deux liens par ligne", () => {
+    render(<ReceiptList receipts={[JANVIER]} canDelete />);
+
+    expect(within(ligne(0)).getAllByRole("link")).toHaveLength(2);
+  });
+});

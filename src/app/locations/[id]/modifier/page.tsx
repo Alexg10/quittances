@@ -57,6 +57,13 @@ export default async function UpdateRentalPage({
   }
 
   const { rental } = access;
+  // Une location archivée est en consultation seule (R39 de la spécification
+  // 04) : la page ne s'applique pas, retour au détail, sans message (R40). Ce
+  // contrôle vient après celui de l'appartenance : un autre compte a déjà reçu
+  // « Location introuvable » et n'apprend rien de l'état d'archivage.
+  if (rental.archivedAt !== null) {
+    redirect(`/locations/${rental.id}`);
+  }
   // L'identifiant est lié à l'action ici, sur le serveur, à partir de la
   // location relue en base : il ne figure dans aucun champ du formulaire.
   // L'action reçoit (rentalId, étatPrécédent, formulaire). Elle refait tous les

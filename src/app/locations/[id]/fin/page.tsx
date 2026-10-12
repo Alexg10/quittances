@@ -56,6 +56,12 @@ export default async function RentalEndPage({
   }
 
   const { rental } = access;
+  // Une location archivée est en consultation seule (R39 de la spécification
+  // 04) : ni date de fin ni réouverture. La page ne s'applique pas, retour au
+  // détail, sans message (R40), après le contrôle d'appartenance.
+  if (rental.archivedAt !== null) {
+    redirect(`/locations/${rental.id}`);
+  }
   // L'identifiant est lié aux deux actions sur le serveur, à partir de la
   // location relue en base. Elles refont tous les contrôles (../actions.ts).
   const setEndDate = setRentalEndDateAction.bind(null, rental.id);

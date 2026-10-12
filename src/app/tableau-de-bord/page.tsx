@@ -22,6 +22,7 @@ import {
 } from "@/auth/return-path";
 
 import { LANDLORD_PATH } from "@/receipts/landlord-path";
+import { ARCHIVES_PATH } from "@/rentals/archives-path";
 import { getTodayInParis } from "@/rentals/rental-dates";
 import { splitRentals } from "@/rentals/rental-list";
 import {
@@ -65,7 +66,9 @@ export default async function DashboardPage({
     );
   }
 
-  // Seule lecture de locations de la page : celle du propriétaire courant.
+  // Seule lecture de locations de la page : les locations ACTIVES du
+  // propriétaire courant. Les locations archivées sont sur /archives (R41 de la
+  // spécification 04) : si toutes le sont, l'état vide s'affiche ici.
   const rentals = await readRentals(owner);
   if (rentals === "unavailable") {
     // Une liste illisible n'est jamais rendue comme « Aucune location » (R31).
@@ -93,11 +96,15 @@ export default async function DashboardPage({
           <span className="text-text-primary">{owner.email}</span>
         </p>
         {/* Accès aux pages du compte (R24 de la spécification 04) : l'en-tête
-            n'a pas la place de les porter. Toujours présent, que les
-            informations soient renseignées ou non. */}
+            n'a pas la place de les porter. Toujours présents, que les
+            informations soient renseignées ou non, qu'il existe des archives
+            ou non. */}
         <p className="flex flex-wrap gap-4">
           <Link href={LANDLORD_PATH} className="text-primary underline">
             Mes informations
+          </Link>
+          <Link href={ARCHIVES_PATH} className="text-primary underline">
+            Archives
           </Link>
         </p>
 

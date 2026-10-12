@@ -21,19 +21,29 @@ import { formatDate } from "@/rentals/rental-dates";
 type ReceiptListProps = {
   // Déjà triées par le magasin : mois le plus récent d'abord.
   receipts: Receipt[];
+  // false pour une location archivée, en consultation seule (R39) : les lignes
+  // gardent « Télécharger » et n'ont pas de lien « Supprimer ». Ce n'est qu'un
+  // affichage : la page et l'action de suppression refusent elles-mêmes une
+  // quittance dont la location est archivée.
+  canDelete?: boolean;
 };
 
-export function ReceiptList({ receipts }: ReceiptListProps) {
+export function ReceiptList({ receipts, canDelete = true }: ReceiptListProps) {
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
       {receipts.map((receipt) => (
-        <ReceiptRow key={receipt.id} receipt={receipt} />
+        <ReceiptRow key={receipt.id} receipt={receipt} canDelete={canDelete} />
       ))}
     </ul>
   );
 }
 
-function ReceiptRow({ receipt }: { receipt: Receipt }) {
+type ReceiptRowProps = {
+  receipt: Receipt;
+  canDelete: boolean;
+};
+
+function ReceiptRow({ receipt, canDelete }: ReceiptRowProps) {
   // « octobre 2026 » : distingue les liens de même texte d'une ligne à l'autre.
   const monthInSentence = formatMonthInSentence(receipt.month);
 
@@ -89,13 +99,15 @@ function ReceiptRow({ receipt }: { receipt: Receipt }) {
         </a>
         {/* Un lien vers la page de confirmation : l'afficher ou la précharger
             ne supprime rien, seul l'envoi de son formulaire le fait (R18). */}
-        <Link
-          href={`/quittances/${receipt.id}/supprimer`}
-          aria-label={`Supprimer la quittance, ${monthInSentence}`}
-          className={DESTRUCTIVE_BUTTON_SMALL_CLASSES}
-        >
-          Supprimer
-        </Link>
+        {canDelete ? (
+          <Link
+            href={`/quittances/${receipt.id}/supprimer`}
+            aria-label={`Supprimer la quittance, ${monthInSentence}`}
+            className={DESTRUCTIVE_BUTTON_SMALL_CLASSES}
+          >
+            Supprimer
+          </Link>
+        ) : null}
       </div>
     </li>
   );

@@ -1,8 +1,9 @@
 "use server";
 
 // Server Actions qui visent une location existante : modification, date de fin,
-// réouverture, suppression (R5, R7, R21 à R24, R29 à R31 de la spécification 03)
-// et production d'une quittance (R26 de la spécification 04).
+// réouverture, suppression (R5, R7, R21 à R24, R29 à R31 de la spécification 03),
+// production d'une quittance, archivage et restauration (R26, R39 et R40 de la
+// spécification 04).
 //
 // Ce sont des points d'entrée HTTP publics : n'importe qui peut leur envoyer un
 // POST sans passer par nos formulaires, avec les arguments de son choix. Elles
@@ -10,9 +11,15 @@
 //
 //   1. la session               -> readOwnedRental
 //   2. la location, pour ce propriétaire et lui seul  -> readOwnedRental
-//   3. la validation des champs -> dans chaque action
+//   3. l'état d'archivage, puis la validation des champs -> dans chaque action
 //   4. l'écriture, filtrée elle aussi sur le propriétaire -> writeRental
 //   5. l'invalidation des pages gardées par le navigateur, puis la redirection
+//
+// L'ordre de 2 et 3 est une règle de sécurité : l'état d'une location n'est
+// regardé qu'une fois établi qu'elle appartient au demandeur. Pour la location
+// d'un autre compte, la réponse est « introuvable » à l'étape 2, qu'elle soit
+// en cours, terminée ou archivée, avec ou sans quittance : rien ne révèle son
+// état (R40).
 //
 // D'où vient l'identifiant de la location. La page le lit dans son adresse,
 // relit la location en base, puis lie l'identifiant à l'action :
@@ -29,10 +36,13 @@
 //
 // « État inapplicable » (R40 de la spécification 04). Une écriture peut répondre
 // "not-applicable" : la location existe et appartient au demandeur, mais elle
-// est archivée (modification, date de fin, réouverture), ou elle a au moins une
-// quittance et n'est pas archivée (suppression). Rien n'a été écrit, et la
+// est archivée (modification, date de fin, réouverture, archivage), elle n'est
+// pas terminée (archivage), elle est active (restauration), ou elle a au moins
+// une quittance et n'est pas archivée (suppression). Rien n'a été écrit, et la
 // réponse est une redirection vers le détail, qui montre l'état réel : ni
-// message d'erreur, ni écran « introuvable ».
+// message d'erreur, ni écran « introuvable ». C'est l'écriture qui décide, sur
+// l'état en base à cet instant : jamais la page affichée, ni la lecture de
+// l'étape 2, qui peuvent dater d'avant un changement fait dans un autre onglet.
 //
 // « Introuvable » se répond par notFound() : code 404 et écran « Location
 // introuvable » quand JavaScript est actif. Sans JavaScript, Next répond à un
@@ -49,6 +59,7 @@ import { getLandlord, LandlordStoreError } from "@/receipts/landlord-store";
 import type { LandlordValues } from "@/receipts/landlord-validation";
 import type { ReceiptFormState } from "@/receipts/receipt-form-state";
 import { RECEIPT_ERROR_MESSAGES } from "@/receipts/receipt-messages";
+import { ARCHIVES_PATH } from "@/rentals/archives-path";
 import {
   produceReceipt,
   ReceiptStoreError,
@@ -64,14 +75,18 @@ import type {
   EndDateFormState,
 } from "@/rentals/rental-operation-state";
 import {
+  archiveRental,
   deleteRental,
   getRental,
   reopenRental,
   RentalStoreError,
+  restoreRental,
   setRentalEndDate,
   updateRental,
+  type ArchiveRentalResult,
   type DeleteRentalResult,
   type Rental,
+  type RestoreRentalResult,
   type UpdateRentalResult,
 } from "@/rentals/rental-store";
 import {
@@ -101,7 +116,15 @@ export async function updateRentalAction(
   }
   const { owner, rental } = access;
 
-  // 3. Les dix champs. La date de fin qui sert au contrôle L22 est celle qui
+  // 3. Une location archivée ne se modifie pas : retour à son détail, sans
+  // message et avant toute validation (R26, R40 de la spécification 04). Sans
+  // ce contrôle, un formulaire invalide envoyé sur une location archivée
+  // recevrait des messages de champ pour une page qui ne s'applique plus.
+  if (rental.archivedAt !== null) {
+    redirect(`/locations/${rental.id}`);
+  }
+
+  // Les dix champs. La date de fin qui sert au contrôle L22 est celle qui
   // vient d'être relue en base, jamais une valeur du formulaire.
   const validation = validateRentalForm(fields, {
     existingEndDate: rental.endDate,
@@ -119,7 +142,8 @@ export async function updateRentalAction(
   }
 
   // 5. Arrivée sur le détail (R29). C'est aussi la réponse à un état
-  // inapplicable (location archivée) : même destination, rien n'a été écrit.
+  // inapplicable (location archivée entre l'étape 3 et l'écriture) : même
+  // destination, rien n'a été écrit.
   revalidateRentalPages();
   redirect(`/locations/${rental.id}`);
 }
@@ -139,6 +163,12 @@ export async function setRentalEndDateAction(
     return { endDate, formError: ERROR_MESSAGES.E8 };
   }
   const { owner, rental } = access;
+
+  // Une location archivée ne reçoit pas de date de fin : retour à son détail,
+  // avant toute validation (R26, R40 de la spécification 04).
+  if (rental.archivedAt !== null) {
+    redirect(`/locations/${rental.id}`);
+  }
 
   // La date de début qui sert au contrôle L24 est celle de la base.
   const validation = validateEndDate(endDate, rental.startDate);
@@ -161,6 +191,8 @@ export async function setRentalEndDateAction(
 
 // Aucun champ : le formulaire envoyé n'est pas même reçu en paramètre.
 // Rouvrir une location qui n'a pas de date de fin réussit aussi (R29).
+// Une location archivée n'est pas rouverte : l'écriture répond
+// "not-applicable", et l'arrivée est la même, le détail (R40).
 export async function reopenRentalAction(
   rentalId: unknown,
 ): Promise<ConfirmFormState> {
@@ -181,10 +213,74 @@ export async function reopenRentalAction(
   redirect(`/locations/${rental.id}`);
 }
 
-// --- Suppression (R23, R24) --------------------------------------------------
+// --- Archivage (R39, R40 de la spécification 04) -----------------------------
+
+// Aucun champ. Une Server Action ne répond qu'à un POST : afficher, recharger
+// ou précharger la page d'archivage n'archive jamais rien.
+export async function archiveRentalAction(
+  rentalId: unknown,
+): Promise<ConfirmFormState> {
+  const access = await readOwnedRental("Archivage de location", rentalId);
+  if (access.kind === "unavailable") {
+    return { formError: ERROR_MESSAGES.E8 };
+  }
+  const { owner, rental } = access;
+
+  // L'instant de la demande, lu sur l'horloge du serveur, jamais reçu du
+  // navigateur. Le magasin en tire à la fois la date d'archivage et le jour, à
+  // Paris, qui dit si la location est terminée. Cette condition est dans la
+  // requête d'écriture : une location rouverte dans un autre onglet depuis
+  // l'affichage de la page n'est pas archivée.
+  const now = new Date();
+  const written = await writeRental("Archivage de location", () =>
+    archiveRental(owner, rental.id, now),
+  );
+  if (written === "unavailable") {
+    return { formError: ERROR_MESSAGES.E8 };
+  }
+
+  revalidateRentalPages();
+  if (written === "not-applicable") {
+    // Location en cours, ou déjà archivée (sa date d'archivage n'a pas
+    // changé) : rien n'a été écrit. Le détail montre l'état réel (R40).
+    redirect(`/locations/${rental.id}`);
+  }
+  // La location a quitté le tableau de bord (R26).
+  redirect(DASHBOARD_PATH);
+}
+
+// --- Restauration (R40 de la spécification 04) -------------------------------
+
+// Aucun champ, et pas de page de confirmation : l'opération se défait en
+// archivant de nouveau. Elle reste un POST.
+export async function restoreRentalAction(
+  rentalId: unknown,
+): Promise<ConfirmFormState> {
+  const access = await readOwnedRental("Restauration de location", rentalId);
+  if (access.kind === "unavailable") {
+    return { formError: ERROR_MESSAGES.E8 };
+  }
+  const { owner, rental } = access;
+
+  const written = await writeRental("Restauration de location", () =>
+    restoreRental(owner, rental.id),
+  );
+  if (written === "unavailable") {
+    return { formError: ERROR_MESSAGES.E8 };
+  }
+
+  // Restaurée, ou déjà active ("not-applicable", rien n'a été écrit) : dans
+  // les deux cas l'arrivée est le détail, qui montre l'état réel (R26, R40).
+  revalidateRentalPages();
+  redirect(`/locations/${rental.id}`);
+}
+
+// --- Suppression (R23, R24 ; R19, R40 et R43 de la spécification 04) ---------
 
 // Aucun champ. Une Server Action ne répond qu'à un POST : afficher, recharger
 // ou précharger la page de confirmation ne supprime jamais rien (R24).
+// Deux situations aboutissent (R43) : une location active sans quittance, et
+// une location archivée, effacée avec ses quittances.
 export async function deleteRentalAction(
   rentalId: unknown,
 ): Promise<ConfirmFormState> {
@@ -205,11 +301,16 @@ export async function deleteRentalAction(
 
   revalidateRentalPages();
   if (written === "not-applicable") {
-    // La location a une quittance et n'est pas archivée : elle n'a pas été
-    // supprimée (R43 de la spécification 04). Arrivée sur son détail.
+    // La location a une quittance et n'est pas archivée (restaurée dans un
+    // autre onglet, par exemple) : elle n'a pas été supprimée (R43 de la
+    // spécification 04). Arrivée sur son détail.
     redirect(`/locations/${rental.id}`);
   }
-  redirect(DASHBOARD_PATH);
+  // Arrivée (R26) : les archives pour une location archivée, le tableau de
+  // bord pour une location active. Elle est décidée d'après la location relue
+  // en base à l'étape 2, jamais d'après un champ du formulaire ni l'adresse
+  // d'où il vient : le navigateur ne choisit pas la destination.
+  redirect(rental.archivedAt !== null ? ARCHIVES_PATH : DASHBOARD_PATH);
 }
 
 // --- Production d'une quittance (R6, R25 et R26 de la spécification 04) -------
@@ -398,6 +499,14 @@ async function readOwnedRental(
   return { kind: "ready", owner, rental };
 }
 
+// Ce que rend une écriture de rental-store : faite (un mot par opération),
+// "not-found" ou "not-applicable".
+type RentalWriteResult =
+  | UpdateRentalResult
+  | DeleteRentalResult
+  | ArchiveRentalResult
+  | RestoreRentalResult;
+
 // Étape 4 de R7 : exécute une écriture de rental-store. Entre la lecture et
 // l'écriture, la location a pu être supprimée dans un autre onglet : l'écriture,
 // filtrée sur le propriétaire, répond alors "not-found", et la réponse est la
@@ -405,9 +514,9 @@ async function readOwnedRental(
 // "not-applicable", que l'action traduit en redirection vers le détail.
 async function writeRental(
   operation: string,
-  write: () => Promise<UpdateRentalResult | DeleteRentalResult>,
+  write: () => Promise<RentalWriteResult>,
 ): Promise<"written" | "not-applicable" | "unavailable"> {
-  let result: UpdateRentalResult | DeleteRentalResult;
+  let result: RentalWriteResult;
   try {
     result = await write();
   } catch (error) {
@@ -424,10 +533,11 @@ async function writeRental(
 }
 
 // Étape 5. Le navigateur garde en mémoire les pages déjà affichées (tableau de
-// bord, détail, formulaires préremplis) : on les déclare périmées, pour qu'elles
-// soient redemandées au serveur à la prochaine visite (R30).
+// bord, archives, détail, formulaires préremplis) : on les déclare périmées,
+// pour qu'elles soient redemandées au serveur à la prochaine visite (R30).
 function revalidateRentalPages(): void {
   revalidatePath(DASHBOARD_PATH);
+  revalidatePath(ARCHIVES_PATH);
   // "layout" : le détail et toutes les pages placées sous /locations/<id>, dont
   // la page de production d'une quittance.
   revalidatePath("/locations/[id]", "layout");

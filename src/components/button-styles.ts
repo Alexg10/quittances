@@ -25,3 +25,10 @@ export const PRIMARY_BUTTON_LINK_CLASSES =
 // effets de survol sont coupés et l'opacité baisse, comme pour SubmitButton.
 export const DESTRUCTIVE_BUTTON_LARGE_CLASSES =
   "inline-flex h-11 w-full items-center justify-center rounded-md border border-error px-6 text-body font-medium text-error-text transition-[border-color,translate] duration-200 enabled:hover:border-error-text motion-safe:enabled:hover:-translate-y-px disabled:opacity-60 motion-reduce:duration-0";
+
+// Bouton primaire, grande taille (44px), sur toute la largeur du formulaire :
+// l'apparence de SubmitButton, pour un formulaire sans champ dont le bouton est
+// rendu par ConfirmForm (« Archiver la location », R36 de la spécification 04).
+// En attente (disabled), les effets de survol sont coupés et l'opacité baisse.
+export const PRIMARY_BUTTON_LARGE_CLASSES =
+  "inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-6 text-body font-medium text-surface transition-[background-color,translate] duration-200 enabled:hover:bg-primary-hover enabled:hover:shadow-primary-glow motion-safe:enabled:hover:-translate-y-px disabled:opacity-60 motion-reduce:duration-0";

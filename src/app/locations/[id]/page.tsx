@@ -1,7 +1,10 @@
-// Détail d'une location (spécification 03, « Page /locations/<id> »).
+// Détail d'une location (spécification 03, « Page /locations/<id> »), active ou
+// archivée : la même adresse, deux présentations (R39 de la spécification 04).
+// Une location archivée est en consultation seule : un bandeau, ses quittances
+// téléchargeables, et deux gestes, restaurer ou supprimer définitivement.
 // Server Component, rendu à chaque requête : ce qu'il affiche dépend de la
-// session, et la lire suffit à ce que Next ne pré-rende pas la page. C'est la seule page de lecture où l'adresse e-mail du locataire
-// apparaît (R43).
+// session, et la lire suffit à ce que Next ne pré-rende pas la page. C'est la
+// seule page de lecture où l'adresse e-mail du locataire apparaît (R43).
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -12,13 +15,12 @@ import {
   DASHBOARD_PATH,
   toSearchString,
 } from "@/auth/return-path";
-import {
-  DESTRUCTIVE_BUTTON_SMALL_CLASSES,
-  PRIMARY_BUTTON_LINK_CLASSES,
-  SECONDARY_BUTTON_CLASSES,
-} from "@/components/button-styles";
+import { PRIMARY_BUTTON_LINK_CLASSES } from "@/components/button-styles";
 import { RentalStatusChip } from "@/components/rental-status-chip";
+import { ARCHIVES_PATH } from "@/rentals/archives-path";
 import { formatAmount, totalInCents } from "@/rentals/rental-amount";
+import { isRentalArchivable } from "@/rentals/rental-archivable";
+import { formatArchiveDate } from "@/rentals/rental-archive-text";
 import {
   formatDate,
   getRentalStatus,
@@ -30,7 +32,9 @@ import { DashboardHeader } from "../../tableau-de-bord/dashboard-header";
 import { ServiceUnavailable } from "../../tableau-de-bord/service-unavailable";
 import { SignOutForm } from "../../tableau-de-bord/sign-out-form";
 import { buildRentalPath, readRentalAccess } from "../rental-access";
+import { restoreRentalAction } from "./actions";
 import { ReceiptList } from "./receipt-list";
+import { ActiveRentalActions, ArchivedRentalActions } from "./rental-actions";
 import { readRentalReceipts } from "./rental-receipts";
 
 // Titres génériques : jamais une adresse ni un nom de locataire dans le titre
@@ -92,8 +96,18 @@ export default async function RentalPage({
   // elle n'a aucune quittance. Ce n'est qu'un affichage : la condition est
   // recontrôlée par l'écriture elle-même.
   const hasReceipts = receipts.length > 0;
+  // Un seul instant pour toute la page, lu sur l'horloge du serveur : le statut
+  // et le lien « Archiver » ne peuvent pas se contredire autour de minuit.
+  const now = new Date();
   // Le statut se calcule sur le serveur, à la date du jour à Paris (R20).
-  const status = getRentalStatus(rental.endDate, getTodayInParis(new Date()));
+  const status = getRentalStatus(rental.endDate, getTodayInParis(now));
+  // R39 : seule une location terminée peut être archivée. Même règle que le
+  // statut, et même horloge : celle du serveur, jamais celle du navigateur.
+  const isArchivable = isRentalArchivable(rental.endDate, now);
+  // null tant que la location est active. Tout ce qui suit est décidé ici,
+  // après le contrôle d'appartenance : un autre compte a déjà reçu « Location
+  // introuvable » et n'apprend rien de l'état d'archivage (R40).
+  const archivedAt = rental.archivedAt;
   // Les liens sont construits avec l'identifiant lu en base, pas avec celui de
   // l'adresse.
   const rentalPath = `/locations/${rental.id}`;
@@ -108,20 +122,43 @@ export default async function RentalPage({
         {/* Une colonne de 640px au plus (R41). */}
         <div className="flex w-full max-w-160 flex-col gap-8">
           <div className="flex flex-col gap-4">
-            <Link
-              href={DASHBOARD_PATH}
-              className="self-start text-primary underline"
-            >
-              Retour au tableau de bord
-            </Link>
+            {/* On revient d'où la location est rangée. */}
+            {archivedAt === null ? (
+              <Link
+                href={DASHBOARD_PATH}
+                className="self-start text-primary underline"
+              >
+                Retour au tableau de bord
+              </Link>
+            ) : (
+              <Link
+                href={ARCHIVES_PATH}
+                className="self-start text-primary underline"
+              >
+                Retour aux archives
+              </Link>
+            )}
             <div className="flex flex-wrap items-center gap-3">
               {/* min-w-0 et wrap-anywhere : une adresse très longue passe à la
                   ligne au lieu de créer un défilement horizontal. */}
               <h1 className="min-w-0 wrap-anywhere font-display text-subtitle font-bold md:text-title">
                 {rental.address}
               </h1>
+              {/* Toujours « Terminée » pour une location archivée : la base
+                  garantit qu'elle l'était à son archivage (R39). */}
               <RentalStatusChip status={status} />
             </div>
+            {/* Bandeau d'une location archivée : un texte dans une carte
+                bordée, sans couleur sémantique (R36). Il dit sans détour
+                qu'archiver n'est pas effacer (R37). */}
+            {archivedAt === null ? null : (
+              <p className="rounded-xl border border-border bg-surface p-4">
+                Location archivée le {formatArchiveDate(archivedAt)}. Elle
+                n&apos;apparaît plus au tableau de bord et ne peut plus être
+                modifiée. Restaurez-la pour la modifier ou produire une
+                quittance.
+              </p>
+            )}
           </div>
 
           <DetailGroup title="Le logement">
@@ -169,16 +206,21 @@ export default async function RentalPage({
           <section className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <h2 className="font-display text-body font-bold">Quittances</h2>
-              {/* Seul élément primaire de la page (R36 de la spécification 04). */}
-              <Link
-                href={`${rentalPath}/quittances/nouvelle`}
-                className={PRIMARY_BUTTON_LINK_CLASSES}
-              >
-                Produire une quittance
-              </Link>
+              {/* Seul élément primaire de la page (R36 de la spécification 04).
+                  Absent d'une location archivée : on n'y produit rien (R39). */}
+              {archivedAt === null ? (
+                <Link
+                  href={`${rentalPath}/quittances/nouvelle`}
+                  className={PRIMARY_BUTTON_LINK_CLASSES}
+                >
+                  Produire une quittance
+                </Link>
+              ) : null}
             </div>
             {hasReceipts ? (
-              <ReceiptList receipts={receipts} />
+              // Archivée : les quittances restent téléchargeables, mais ne se
+              // suppriment pas.
+              <ReceiptList receipts={receipts} canDelete={archivedAt === null} />
             ) : (
               <p className="text-text-secondary">
                 Aucune quittance pour cette location.
@@ -188,41 +230,22 @@ export default async function RentalPage({
 
           <section className="flex flex-col gap-4">
             <h2 className="font-display text-body font-bold">Actions</h2>
-            {/* Des liens, pas des boutons : chacun mène à une page (R40).
-                Aucun n'agit par lui-même : afficher ou précharger une page ne
-                modifie jamais rien (R24). */}
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href={`${rentalPath}/modifier`}
-                className={SECONDARY_BUTTON_CLASSES}
-              >
-                Modifier
-              </Link>
-              <Link
-                href={`${rentalPath}/fin`}
-                className={SECONDARY_BUTTON_CLASSES}
-              >
-                {rental.endDate
-                  ? "Modifier la fin de la location"
-                  : "Mettre fin à la location"}
-              </Link>
-              {/* Seulement sans quittance (R43 de la spécification 04). */}
-              {hasReceipts ? null : (
-                <Link
-                  href={`${rentalPath}/supprimer`}
-                  className={DESTRUCTIVE_BUTTON_SMALL_CLASSES}
-                >
-                  Supprimer
-                </Link>
-              )}
-            </div>
-            {/* Un lien absent et expliqué plutôt qu'un lien indisponible. */}
-            {hasReceipts ? (
-              <p className="text-text-secondary">
-                Une location qui a des quittances ne peut pas être supprimée
-                directement. Archivez-la, puis supprimez-la depuis les archives.
-              </p>
-            ) : null}
+            {archivedAt === null ? (
+              <ActiveRentalActions
+                rentalPath={rentalPath}
+                hasEndDate={rental.endDate !== null}
+                isArchivable={isArchivable}
+                hasReceipts={hasReceipts}
+              />
+            ) : (
+              <ArchivedRentalActions
+                rentalPath={rentalPath}
+                // L'identifiant est lié à l'action sur le serveur, à partir de
+                // la location relue en base. Il voyage ensuite par le
+                // navigateur, en clair : l'action refait tous les contrôles.
+                restoreAction={restoreRentalAction.bind(null, rental.id)}
+              />
+            )}
           </section>
         </div>
       </main>

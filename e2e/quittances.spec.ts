@@ -44,6 +44,7 @@ import {
   telechargerPdf,
   textePlat,
   valeursBailleur,
+  MOTIF_UUID,
   WCAG,
 } from "./aide-quittances";
 import { readPdf } from "../src/test-support/read-pdf";
@@ -1047,7 +1048,9 @@ test.describe("Sans JavaScript", () => {
     await expect(ligneQuittance(page, "Janvier 2026")).toHaveCount(0);
     expect(await quittancesDuCompte(email)).toHaveLength(0);
     // Aucune valeur saisie dans une adresse.
-    expect(adresses.filter((a) => /425|Durand|75002|2026-01-20/.test(a))).toEqual([]);
+    // Les identifiants (UUID) sont aléatoires et peuvent contenir « 425 » : on ne regarde que le reste de l'adresse.
+    const sansIdentifiants = adresses.map((a) => a.replace(MOTIF_UUID, "ID"));
+    expect(sansIdentifiants.filter((a) => /425|Durand|75002|2026-01-20/.test(a))).toEqual([]);
     await contexteSansJs.close();
     await proprietaire.contexte.close();
   });

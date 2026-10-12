@@ -168,13 +168,15 @@ export const config = {
   // session : jamais une location, jamais l'identifiant de l'adresse. Savoir à
   // qui appartient une location reste l'affaire de la page.
   //
-  // "/mes-informations/:path*" et "/quittances/:path*" (spécification 04) suivent la
-  // même règle : le proxy n'y lit que la session, jamais une quittance.
+  // "/mes-informations/:path*", "/quittances/:path*" et "/archives/:path*"
+  // (spécification 04) suivent la même règle : le proxy n'y lit que la session,
+  // jamais une quittance ni une location.
   matcher: [
     "/tableau-de-bord/:path*",
     "/locations/:path*",
     "/mes-informations/:path*",
     "/quittances/:path*",
+    "/archives/:path*",
     "/connexion",
     "/inscription",
   ],

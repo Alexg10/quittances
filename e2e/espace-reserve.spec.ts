@@ -59,10 +59,11 @@ test.describe("Espace réservé", () => {
     await expect(page.getByRole("banner")).toHaveCount(1);
     await expect(page.getByRole("main")).toHaveCount(1);
     // Liens désignés par leur nom, non par leur nombre : T5 ajoute « Archives » (spécification 04, CA19).
-    for (const nom of ["Quittances, tableau de bord", "Mes informations", "Ajouter une location"]) {
+    for (const nom of ["Quittances, tableau de bord", "Mes informations", "Archives", "Ajouter une location"]) {
       await expect(page.getByRole("link", { name: nom, exact: true })).toHaveCount(1);
     }
     await expect(page.getByRole("link", { name: "Mes informations", exact: true })).toHaveAttribute("href", "/mes-informations");
+    await expect(page.getByRole("link", { name: "Archives", exact: true })).toHaveAttribute("href", "/archives");
     const logo = page.getByRole("link", { name: "Quittances, tableau de bord" });
     await expect(logo).toHaveCount(1);
     await expect(logo).toHaveAttribute("href", "/tableau-de-bord");
