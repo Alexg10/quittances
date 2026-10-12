@@ -89,3 +89,7 @@ Les quittances, reçus et avis d'échéance en PDF sont des documents imprimable
 - Don't : mettre d'ombre sur des éléments statiques — l'élévation est réservée au survol et aux éléments flottants
 - Don't : utiliser plus de deux graisses par famille de police sur un même écran (titres en 700 ; texte en 400 et 500)
 - Don't : placer plus d'un bouton primaire (indigo plein) dans une même section
+
+## Documents PDF
+
+Les quittances en PDF sont en noir sur blanc, sans couleur ni image : Plus Jakarta Sans 700 pour le titre, DM Sans 400 et 500 pour tout le reste, y compris la référence (JetBrains Mono, réservée aux références à l'écran, n'est pas incorporée au PDF pour ne pas embarquer une troisième famille).

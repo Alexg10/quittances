@@ -48,10 +48,36 @@ Dernière mise à jour : 2026-10-10
 
 ### Prochaine étape
 
-Quatrième fonctionnalité, proposée à l'utilisateur : **quittance de loyer en PDF** (produire le document à partir d'une location et d'un mois). Elle demande deux choses avant la spécification, à expliquer puis décider une à la fois :
+Quatrième fonctionnalité, acceptée par l'utilisateur (branche `quittance-pdf`) : **quittance de loyer en PDF** (produire le document à partir d'une location et d'un mois). Elle demande deux choses avant la spécification, à expliquer puis décider une à la fois :
 
-1. Le choix technique de la **génération de PDF**.
+1. Le choix technique de la **génération de PDF** : **décidé le 2026-10-12**, composants React pour PDF (`@react-pdf/renderer`), produits sur le serveur et servis par un Route Handler. Compatibilité avec React 19 et Next 16 à vérifier en premier par le développeur ; repli sur un dessin bas niveau (`pdf-lib`) sinon.
 2. Les **informations du bailleur** (nom, adresse), que l'inscription ne demande pas, et ce qu'une quittance doit mentionner (à faire vérifier : le chef de projet a signalé ne pas pouvoir affirmer le droit locatif).
+
+Orientations validées par l'utilisateur : page « Mes informations » pour le bailleur ; production manuelle d'une quittance pour une location et un mois, le propriétaire attestant le paiement intégral ; quittance enregistrée avec ses montants figés ; pas de quittance pour un paiement partiel ; l'accord du locataire pour l'envoi électronique est reporté à la fonctionnalité des e-mails. Droit vérifié sur des fiches pratiques seulement (article 21 de la loi du 6 juillet 1989), à faire vérifier sur le texte officiel.
+
+Décisions de l'utilisateur du 2026-10-12, à faire entrer dans la spécification 04 : (1) **une quittance se supprime réellement**, pour être refaite ; (2) **« supprimer » une location l'archive, avec toutes ses quittances** ; depuis les archives, elle peut ensuite être supprimée définitivement (cela redéfinit la suppression réelle de la spécification 03, R23) ; (3) l'utilisateur fournira **deux quittances réelles** qu'il a reçues comme locataire, l'une d'un particulier, l'autre d'une agence : le texte du document sera révisé d'après elles. Ne pas copier ces fichiers dans le dépôt (données personnelles) ; n'en reprendre que la structure et les formulations.
+
+Les deux exemples ont été lus (non copiés dans le dépôt). Ajustements du document validés par l'utilisateur : le **mois dans le titre** ; **« Provisions pour charges »** dans le détail ; une **mention de réserve courte**, calquée sur celle de l'agence (formule juridique, à faire relire) ; la **référence aléatoire** est conservée, pas de numérotation suivie. Non repris : « Paiement locataire » et « Solde à payer ». **Les mentions propres à un professionnel (carte professionnelle, garantie, mandat) sont reportées à une éventuelle V2 ouverte aux professionnels.** Idée pour la fonctionnalité des échéances : l'agence envoie la quittance du mois écoulé avec l'avis d'échéance du mois suivant, dans le même courrier.
+
+Archivage, précisé par l'utilisateur : une location archivée quitte le tableau de bord pour une page « Archives » ; elle peut être restaurée avec ses quittances ; ses quittances restent téléchargeables depuis les archives ; la suppression définitive efface la location et ses quittances après une confirmation qui en annonce le nombre.
+
+**Spécification 04 validée par l'utilisateur le 2026-10-12** (42 règles, 54 critères avant la dernière retouche, 5 tâches). Décisions : texte du document en douze blocs, avec le mois sous le titre, « Provisions pour charges » et la mention de réserve « La présente quittance ne libère le locataire que pour la période indiquée. Elle ne vaut pas quittance des loyers et des charges des périodes antérieures. » (« sous réserve d'encaissement » écartée ; relecture juridique à faire avant ouverture au public) ; **seule une location terminée peut être archivée** ; une location archivée est en consultation seule, restaurable, et compte dans la limite de 100 ; **une location sans aucune quittance peut être supprimée directement**, quel que soit son statut ; une location qui a des quittances suit le parcours terminée, archivée, puis supprimée définitivement depuis les archives.
+
+| Tâche | Contenu | Modèle | Recette `qa` |
+| --- | --- | --- | --- |
+| T1 | Document PDF : vérifier d'abord la bibliothèque et les polices | sonnet | non |
+| T2 | Règles pures : mois, période, validation, référence, nom de fichier, « archivable » | sonnet | non |
+| T3 | Données : quittances, informations du bailleur, archivage | opus | non |
+| T4 | Mes informations, production, téléchargement, suppression d'une quittance | opus | oui, première recette |
+| T5 | Archivage, restauration, suppression définitive ; adaptation des tests de la fonctionnalité 03 | opus | oui, recette finale |
+
+**T1 et T2 développées** par `developpeur-front` en `sonnet` (coupé une fois par la limite d'utilisation, puis repris), pas encore commitées : `@react-pdf/renderer` 4.9 convient (React 19.3, build Next sans configuration, jamais dans le JavaScript client) ; `src/receipts/` (instantané d'une quittance, contenu en douze blocs, document, rendu, polices TTF sous SIL OFL, règles de mois, de période, de référence, de validation) ; `src/rentals/rental-archivable.ts`. Précisions inscrites en tête de la spécification 04 (quinze lettres rares non dessinées, espace fine remplacée, réduction d'échelle pour tenir sur une page, coupe des mots longs, tests du PDF dans l'environnement `node`). L'exception « sans quittance, suppression directe » est inscrite (R43, CA56, CA57) ; sa phrase d'écran est validée par l'utilisateur. Spécification : 43 règles, 56 critères.
+
+T1 et T2 testées par `createur-de-tests` et **commitées** : 438 tests ajoutés (2678 au total), identiques sous trois fuseaux, aucun écart avec la spécification ; `unpdf` en dépendance de développement et module d'aide `src/test-support/read-pdf.ts` (texte, pages, métadonnées, polices d'un PDF), réutilisable par la `qa`. Suites avant commit : lint sans erreur ni avertissement, 2678 Vitest, 325 e2e et 1 ignoré.
+
+Étape en cours : **T3 (données)** chez `developpeur-front` en `opus` : informations du bailleur, quittances, date d'archivage, fonctions d'accès, unicité, suppression dans sa forme finale. Puis T4 (écrans, production, téléchargement) avec la première recette.
+
+Spécification `docs/specs/04-quittance-pdf.md` rédigée par `chef-de-projet`, **en attente de validation** : 38 règles, 45 critères, 5 tâches, 12 questions ouvertes dont 5 touchent au droit. Routes : `/mes-informations`, `/locations/<id>/quittances/nouvelle`, `/quittances/<q>/pdf` (Route Handler), `/quittances/<q>/supprimer`.
 
 Puis, dans l'ordre proposé : envoi d'e-mails (choix du service ; débloque la réinitialisation du mot de passe et la vérification de l'adresse) ; échéances et tâches planifiées (le jour J, confirmation, quittance ou relance) ; tableau de bord des loyers et exports.
 
@@ -80,6 +106,7 @@ Puis, dans l'ordre proposé : envoi d'e-mails (choix du service ; débloque la r
 - Base de données : Postgres hébergé chez Neon, accès avec Drizzle (schéma et requêtes typés, migrations SQL).
 - Authentification : Better Auth, e-mail et mot de passe ; les comptes et les sessions vivent dans la base du projet.
 - Base Neon en région Europe (Francfort).
+- Quittances en PDF produites sur le serveur avec des composants React pour PDF (`@react-pdf/renderer`), servies par un Route Handler.
 - Les routes internes passent par `next/link`, jamais par un `<a>` natif : pas de rechargement complet de la page.
 - `cacheComponents` retiré de `next.config.ts` le 2026-10-11 : les bons codes HTTP (404, 307) et les formulaires sans JavaScript priment sur le rendu partiel.
 - Rythme allégé à partir de la fonctionnalité 03 : recette `qa` à la première tranche de bout en bout et à la fin, pas après chaque tâche ; e2e complets une fois avant chaque commit.

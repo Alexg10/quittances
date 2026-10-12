@@ -1,5 +1,7 @@
 # 02 — Inscription et connexion du propriétaire
 
+**Modifiée par la spécification 04** : le tableau de bord gagne les liens « Mes informations » et « Archives ». Voir `docs/specs/04-quittance-pdf.md`.
+
 Statut : validée par l'utilisateur le 2026-10-10. Questions tranchées : Q1 (branche Neon « test », variable `DATABASE_URL_TEST`), Q2 (pas de nom à l'inscription), Q3 (token `error-text` `#B91C1C`, ajouté à `DESIGN.md`), Q4 (message explicite E3), Q5 et Q6 (12 à 128 caractères, sans confirmation), Q7 (**60 jours** glissants au lieu de 30). Q8 à Q10 restent telles que recommandées.
 
 **Modifiée par la spécification 03** : le contenu de `/tableau-de-bord` (il devient la liste des locations) et son état vide changent. Voir la section « Effet sur la spécification 02 et sur les tests existants » de `docs/specs/03-gestion-des-locations.md`, qui prime sur ce document pour ces points.
