@@ -114,6 +114,12 @@ export async function locationsDuCompte(email: string) {
   );
 }
 
+/** Supprime le compte (et, par cascade, ses locations et ses sessions) : réservé aux comptes quittances.test. */
+export async function supprimerCompte(email: string) {
+  expect(email).toMatch(/@quittances\.test$/);
+  await surBaseDeTest(`delete from "user" where email = $1`, [email]);
+}
+
 /** Identifiant interne du compte (jamais affiché : sert à des champs parasites). */
 export async function identifiantDuCompte(email: string): Promise<string> {
   expect(email).toMatch(/@quittances\.test$/);

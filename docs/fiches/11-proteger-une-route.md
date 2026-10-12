@@ -19,15 +19,17 @@ Un Server Component **ne peut pas écrire de cookie** : quand il s'exécute, les
 
 `pnpm build` affiche un symbole par route :
 
-| Symbole | Rendu | Exemple |
+| Symbole | Rendu | Exemple dans le projet |
 | --- | --- | --- |
-| `○` | pré-rendu une fois au build | `/`, `/inscription` |
-| `◐` | coque statique, plus des parties rendues à la requête sous `<Suspense>` (rendu partiel) | `/tableau-de-bord` en T2 |
-| `ƒ` | rendu à chaque requête | `/tableau-de-bord` en T3 |
+| `○` | pré-rendu une fois au build | `/`, `/connexion`, `/inscription` |
+| `◐` | coque statique, plus des parties rendues à la requête sous `<Suspense>` (rendu partiel, avec `cacheComponents`) | plus aucune aujourd'hui |
+| `ƒ` | rendu à chaque requête | `/tableau-de-bord`, tout `/locations` |
 
-Avec `cacheComponents`, lire les cookies ou les en-têtes rend un composant dépendant de la requête : il doit être sous `<Suspense>`, sinon le build échoue. Next envoie alors d'abord la coque et l'état de chargement, puis le contenu dans un bloc masqué qu'**un script révèle**.
+Sans `cacheComponents` (état du projet depuis le 2026-10-11), une page est pré-rendue sauf si elle lit une donnée de requête : appeler `cookies()` ou `headers()` suffit à la rendre dynamique (`ƒ`), sans rien déclarer. Elle est alors rendue en entier sur le serveur à chaque requête : `redirect()` donne un vrai 307, `notFound()` un vrai 404, et un formulaire refusé réaffiche ses erreurs sans JavaScript.
 
-Conséquence observée : sans JavaScript, le tableau de bord n'affichait que « Chargement en cours », donc pas le bouton de déconnexion. Solution retenue : `export const instant = false` sur la page, qui demande un **rendu bloquant**. Le serveur attend la session et envoie le contenu complet. On y gagne le fonctionnement sans JavaScript, on y perd l'état de chargement.
+Le projet a d'abord tourné avec `cacheComponents`, où toute lecture de session devait être sous `<Suspense>` ou déclarée en rendu bloquant (`export const instant = false`). La fiche 14 raconte ce que cela impliquait et pourquoi on l'a retiré.
+
+Piège à connaître : pendant le build, `headers()` lève une erreur interne de Next pour signaler « cette page dépend de la requête ». Un `try/catch` qui l'avale ferait pré-rendre la page, écran de panne compris. On la relance avec `unstable_rethrow(error)` en tête du `catch`.
 
 ## Traiter la panne comme un état
 

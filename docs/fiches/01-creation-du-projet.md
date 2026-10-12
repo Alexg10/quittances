@@ -25,6 +25,7 @@ Versions installées : Next 16.4, React 19.3, TypeScript 5.9, Tailwind 4.
 - `src/app/page.tsx` — la page de la route `/`. Dans l'App Router, **un dossier = un segment d'URL**, et c'est le fichier `page.tsx` qui rend ce segment accessible.
 - `next.config.ts` — configuration de Next. Deux options sont activées par défaut :
   - `cacheComponents: true` — modèle de cache actuel : rien n'est mis en cache sauf ce qu'on marque avec la directive `"use cache"`. Une même page peut mélanger du statique, du caché et du dynamique.
+  - **Mise à jour du 2026-10-11** : `cacheComponents` a été retiré du projet. Voir la fiche 14 pour ce qu'il apporte, ce qu'il coûte, et pourquoi.
   - `partialPrefetching: true` — un `<Link>` précharge seulement la coquille statique de la page cible, pas la page entière.
 - `AGENTS.md` — consignes pour les agents IA : la doc de la version installée est dans `node_modules/next/dist/docs/`, à lire avant de coder.
 - `tsconfig.json` — l'alias `@/*` pointe vers `src/*` (on écrit `@/components/x` au lieu de `../../components/x`).

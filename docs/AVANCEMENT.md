@@ -80,11 +80,11 @@ Réserves mineures, acceptées : sans le proxy, le 307 produit par la page conti
 
 Incident : la `qa` a arrêté le serveur de développement de l'utilisateur (port 3000) par un `pkill -f next-server`. Consigne ajoutée aux trois agents : arrêter un serveur par son numéro de processus, jamais par son nom.
 
-**T6 développée, testée et commitée** : `src/app/locations/[id]/` (`actions.ts` avec le contrôle commun session puis location filtrée, pages `modifier`, `fin`, `supprimer`, `confirm-form`, `rental-reminder`), page 404 générale en français (`src/app/not-found.tsx`, textes à valider par l'utilisateur), champ de date vidé quand la valeur est invalide. 92 tests Vitest ajoutés (2240 au total). Suites : lint propre, 62 tests d'intégration, 259 e2e et 1 ignoré. À retenir : un argument passé par `bind` à une Server Action n'est ni chiffré ni signé ; la protection est le filtre sur le propriétaire.
+**T6 développée, testée et commitée** : `src/app/locations/[id]/` (`actions.ts` avec le contrôle commun session puis location filtrée, pages `modifier`, `fin`, `supprimer`, `confirm-form`, `rental-reminder`), page 404 générale en français (`src/app/not-found.tsx`, textes validés par l'utilisateur), champ de date vidé quand la valeur est invalide. 92 tests Vitest ajoutés (2240 au total). Suites : lint propre, 62 tests d'intégration, 259 e2e et 1 ignoré. À retenir : un argument passé par `bind` à une Server Action n'est ni chiffré ni signé ; la protection est le filtre sur le propriétaire.
 
 Étape en cours : **recette complète** de la fonctionnalité par `qa` (parcours 1 à 6, isolation sur les quatre opérations, e2e durables).
 
-Reste à faire pour terminer la fonctionnalité 03 : corriger ce que la recette trouvera ; faire valider les textes de la page 404 générale ; fiches 13 (données et mutations, contrôle d'accès par identifiant) et 14 (`cacheComponents` : ce qu'il apporte et coûte) ; corriger les fiches 01 et 11 qui décrivent l'ancien modèle de rendu ; fusion dans `main` avec l'accord de l'utilisateur.
+Reste à faire pour terminer la fonctionnalité 03 : corriger ce que la recette trouvera ; fusion dans `main` avec l'accord de l'utilisateur.
 
 Prompts des quatre agents ajustés avant de lancer (`02eade7`) : secrets, base de test et ports ; dossier de travail propre à chaque agent ; mutations avec `perl` ; liens internes en `next/link` ; critère d'isolation négatif dans chaque spécification.
 
@@ -128,6 +128,8 @@ Prompts des quatre agents ajustés avant de lancer (`02eade7`) : secrets, base d
 - 10 — Server Actions et formulaires : `useActionState`, amélioration progressive, validation serveur, accessibilité des formulaires.
 - 11 — Protéger une route : proxy, cookie et Server Components, statique / partiel / dynamique, panne comme état, redirection ouverte.
 - 12 — Sécurité de la connexion : énumération, redirection ouverte (valider n'est pas normaliser), fixation de session, canal du temps de réponse, ce que chaque niveau de test voit.
+- 13 — Données, mutations et contrôle d'accès par identifiant : lecture dans un Server Component, ordre des contrôles d'une action, IDOR, ce que `bind` ne protège pas, argent en centimes, dates sans fuseau.
+- 14 — `cacheComponents`, rendu partiel et codes HTTP : ce qu'il apporte, ce qu'il coûte, pourquoi on l'a retiré, codes à connaître.
 
 ## Notions à couvrir
 
