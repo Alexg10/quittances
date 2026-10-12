@@ -15,6 +15,13 @@
       "when": 1791739331393,
       "tag": "0001_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791819953090,
+      "tag": "0002_quittances_et_archivage",
+      "breakpoints": true
     }
   ]
 }

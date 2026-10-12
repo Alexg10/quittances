@@ -145,6 +145,8 @@ describe("CA2 — créer, relire, lister", () => {
       endDate: null,
       createdAt: expect.any(Date),
       updatedAt: expect.any(Date),
+      // Spécification 04, R42 : une location créée est active.
+      archivedAt: null,
     });
     // Montants en centimes entiers, date rendue telle quelle, sans fuseau.
     expect(read?.rentInCents).toBe(125050);

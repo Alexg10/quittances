@@ -20,6 +20,7 @@ const RENTAL: Rental = {
   endDate: "2026-06-30",
   createdAt: new Date("2026-01-01T00:00:00Z"),
   updatedAt: new Date("2026-01-01T00:00:00Z"),
+  archivedAt: null,
 };
 
 const texte = (rental: Rental, muted?: boolean) => {

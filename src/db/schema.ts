@@ -1,5 +1,6 @@
 // Schéma Drizzle du compte propriétaire et des sessions (R1, R3, R6 de la
-// spécification 02), puis des locations (spécification 03).
+// spécification 02), des locations (spécification 03), puis des informations du
+// bailleur et des quittances (spécification 04).
 // Les quatre premières tables, leurs noms et leurs colonnes sont ceux que Better
 // Auth attend : les noms de propriétés (emailVerified, userId…) sont ceux de la
 // bibliothèque, les noms de colonnes en base sont en snake_case.
@@ -11,12 +12,14 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
   integer,
   pgTable,
   smallint,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -166,6 +169,10 @@ export const rental = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // Instant de l'archivage (R39 de la spécification 04). NULL : la location
+    // est active. Renseigné par le système, jamais par un formulaire. Archiver
+    // et restaurer ne touchent pas à updated_at : ranger n'est pas modifier.
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (table) => [
     // La liste d'un propriétaire filtre sur owner_id et trie par created_at :
@@ -219,6 +226,218 @@ export const rental = pgTable(
     check(
       "rental_end_date_not_before_start_date",
       sql`${table.endDate} >= ${table.startDate}`,
+    ),
+    // Invariant de R39 et R42 : une location archivée est terminée. Sa date de
+    // fin existe et précède strictement le jour, à Paris, de son archivage.
+    // « is not null » est écrit en toutes lettres : sans lui, une date de fin
+    // absente donnerait NULL à la comparaison, et un CHECK laisse passer NULL.
+    // Cette contrainte interdit aussi, par ricochet, de rouvrir une location
+    // archivée ou de reporter sa date de fin au-delà du jour de son archivage.
+    check(
+      "rental_archived_only_if_ended",
+      sql`${table.archivedAt} is null or (${table.endDate} is not null and ${table.endDate} < (${table.archivedAt} at time zone 'Europe/Paris')::date)`,
+    ),
+    // Aucune ligne de plus n'est interdite par cette unicité (id est déjà la
+    // clé primaire). Elle existe pour que la table des quittances puisse
+    // référencer le couple (location, propriétaire) : voir `receipt`.
+    unique("rental_id_owner_id_unique").on(table.id, table.ownerId),
+  ],
+);
+
+// Les informations du bailleur (R1 de la spécification 04) : zéro ou une ligne
+// par compte, complète ou absente. La clé primaire EST l'identifiant du compte :
+// la base garantit ainsi « au plus un jeu d'informations par compte », et
+// l'enregistrement est une insertion qui remplace la ligne si elle existe.
+// Seul module autorisé à l'interroger : src/receipts/landlord-store.ts (et la
+// production d'une quittance, qui la relit dans sa transaction).
+export const landlord = pgTable(
+  "landlord",
+  {
+    // ON DELETE CASCADE : elles disparaissent avec le compte (R20).
+    ownerId: text("owner_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    address: text("address").notNull(),
+    // Absent (NULL) plutôt que vide quand il n'y a pas de complément.
+    addressComplement: text("address_complement"),
+    postalCode: text("postal_code").notNull(),
+    city: text("city").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // Les bornes de R1, répétées en base (R23).
+    check("landlord_name_length", sql`char_length(${table.name}) between 1 and 100`),
+    check(
+      "landlord_address_length",
+      sql`char_length(${table.address}) between 1 and 200`,
+    ),
+    check(
+      "landlord_address_complement_length",
+      sql`char_length(${table.addressComplement}) between 1 and 100`,
+    ),
+    check(
+      "landlord_postal_code_format",
+      sql`${table.postalCode} ~ '^[0-9]{5}$'`,
+    ),
+    check("landlord_city_length", sql`char_length(${table.city}) between 1 and 100`),
+  ],
+);
+
+// Une quittance (R6 de la spécification 04). Elle porte une COPIE de tout ce
+// qu'elle affiche : nom et adresse du bailleur, nom du locataire, adresse du
+// logement, montants, dates. Rien n'est relu ensuite dans `rental` ni dans
+// `landlord`, et aucune opération ne modifie une ligne de cette table.
+// Seul module autorisé à l'interroger : src/receipts/receipt-store.ts (et la
+// suppression définitive d'une location, dans src/rentals/rental-store.ts).
+//
+// Deux clés étrangères, deux comportements voulus :
+//
+// - vers le compte, ON DELETE CASCADE : si le compte disparaît, ses quittances
+//   disparaissent avec lui (R20) ;
+// - vers la location, ON DELETE NO ACTION : la base REFUSE d'effacer une
+//   location qui a encore une quittance (R43). Pas de cascade silencieuse : un
+//   chemin de code qui oublierait la règle obtient une erreur, pas une perte de
+//   documents. La suppression définitive efface donc elle-même les quittances,
+//   puis la location, dans une même transaction.
+//
+// Pourquoi NO ACTION et pas RESTRICT. RESTRICT est contrôlé à l'instant où la
+// ligne de la location est effacée. NO ACTION est contrôlé à la fin de
+// l'instruction. Quand on efface un compte, Postgres efface en cascade ses
+// locations ET ses quittances dans la même instruction : à la fin, plus aucune
+// quittance ne référence les locations effacées, et le contrôle passe. Avec
+// RESTRICT, l'effacement du compte serait refusé dès la première location qui
+// a une quittance.
+export const receipt = pgTable(
+  "receipt",
+  {
+    // UUID version 4 : la référence affichée en est tirée (R16).
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    rentalId: uuid("rental_id").notNull(),
+    // Mois de rattachement, « AAAA-MM » (R8).
+    month: text("month").notNull(),
+    // Dates de calendrier, rendues comme du texte « AAAA-MM-JJ » (voir `rental`).
+    periodStart: date("period_start", { mode: "string" }).notNull(),
+    periodEnd: date("period_end", { mode: "string" }).notNull(),
+    landlordName: text("landlord_name").notNull(),
+    landlordAddress: text("landlord_address").notNull(),
+    landlordAddressComplement: text("landlord_address_complement"),
+    landlordPostalCode: text("landlord_postal_code").notNull(),
+    landlordCity: text("landlord_city").notNull(),
+    tenantName: text("tenant_name").notNull(),
+    rentalAddress: text("rental_address").notNull(),
+    rentalAddressComplement: text("rental_address_complement"),
+    rentalPostalCode: text("rental_postal_code").notNull(),
+    rentalCity: text("rental_city").notNull(),
+    // Centimes entiers. Le total n'est pas enregistré : il se calcule.
+    rentInCents: integer("rent_in_cents").notNull(),
+    chargesInCents: integer("charges_in_cents").notNull(),
+    paymentDate: date("payment_date", { mode: "string" }).notNull(),
+    // Le jour, à Paris, de la production.
+    issueDate: date("issue_date", { mode: "string" }).notNull(),
+    // L'instant de production : c'est la date de création du PDF (R30).
+    producedAt: timestamp("produced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // La clé étrangère vers la location porte sur le couple (location,
+    // propriétaire) : la base garantit qu'une quittance a le même propriétaire
+    // que sa location. C'est ce qui permet aux lectures de filtrer sur
+    // receipt.owner_id en étant sûres de filtrer sur le propriétaire de la
+    // location. Aucun onDelete : NO ACTION, voir plus haut.
+    foreignKey({
+      name: "receipt_rental_id_owner_id_rental_fk",
+      columns: [table.rentalId, table.ownerId],
+      foreignColumns: [rental.id, rental.ownerId],
+    }),
+    // R15 : une quittance par location et par mois, garantie par la base. Deux
+    // productions simultanées du même mois en créent exactement une. L'index
+    // de cette unicité sert aussi à lister les quittances d'une location.
+    unique("receipt_rental_id_month_unique").on(table.rentalId, table.month),
+    // Pour retrouver les quittances d'un compte qu'on supprime (cascade).
+    index("receipt_owner_id_idx").on(table.ownerId),
+    check(
+      "receipt_month_format",
+      sql`${table.month} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`,
+    ),
+    check(
+      "receipt_period_end_not_before_start",
+      sql`${table.periodEnd} >= ${table.periodStart}`,
+    ),
+    // La période ne sort pas de son mois (R9) : ses deux bornes, écrites
+    // « AAAA-MM », sont le mois de la quittance.
+    check(
+      "receipt_period_within_month",
+      sql`to_char(${table.periodStart}, 'YYYY-MM') = ${table.month} and to_char(${table.periodEnd}, 'YYYY-MM') = ${table.month}`,
+    ),
+    // R13 : la date d'émission n'est jamais antérieure à la date du paiement.
+    check(
+      "receipt_payment_date_not_after_issue_date",
+      sql`${table.paymentDate} <= ${table.issueDate}`,
+    ),
+    check(
+      "receipt_payment_date_range",
+      sql`${table.paymentDate} between '1950-01-01' and '2099-12-31'`,
+    ),
+    check(
+      "receipt_rent_in_cents_range",
+      sql`${table.rentInCents} between 1 and 9999999`,
+    ),
+    check(
+      "receipt_charges_in_cents_range",
+      sql`${table.chargesInCents} between 0 and 9999999`,
+    ),
+    // Les valeurs figées respectent les bornes de leur source (R1 de la
+    // spécification 03 pour le logement et le locataire, R1 de la 04 pour le
+    // bailleur).
+    check(
+      "receipt_landlord_name_length",
+      sql`char_length(${table.landlordName}) between 1 and 100`,
+    ),
+    check(
+      "receipt_landlord_address_length",
+      sql`char_length(${table.landlordAddress}) between 1 and 200`,
+    ),
+    check(
+      "receipt_landlord_address_complement_length",
+      sql`char_length(${table.landlordAddressComplement}) between 1 and 100`,
+    ),
+    check(
+      "receipt_landlord_postal_code_format",
+      sql`${table.landlordPostalCode} ~ '^[0-9]{5}$'`,
+    ),
+    check(
+      "receipt_landlord_city_length",
+      sql`char_length(${table.landlordCity}) between 1 and 100`,
+    ),
+    check(
+      "receipt_tenant_name_length",
+      sql`char_length(${table.tenantName}) between 1 and 100`,
+    ),
+    check(
+      "receipt_rental_address_length",
+      sql`char_length(${table.rentalAddress}) between 1 and 200`,
+    ),
+    check(
+      "receipt_rental_address_complement_length",
+      sql`char_length(${table.rentalAddressComplement}) between 1 and 100`,
+    ),
+    check(
+      "receipt_rental_postal_code_format",
+      sql`${table.rentalPostalCode} ~ '^[0-9]{5}$'`,
+    ),
+    check(
+      "receipt_rental_city_length",
+      sql`char_length(${table.rentalCity}) between 1 and 100`,
     ),
   ],
 );

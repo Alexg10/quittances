@@ -26,6 +26,13 @@
 // l'identifiant de la location d'un autre compte, elles répondent « introuvable »
 // exactement comme pour un identifiant inconnu (R5).
 //
+// « État inapplicable » (R40 de la spécification 04). Une écriture peut répondre
+// "not-applicable" : la location existe et appartient au demandeur, mais elle
+// est archivée (modification, date de fin, réouverture), ou elle a au moins une
+// quittance et n'est pas archivée (suppression). Rien n'a été écrit, et la
+// réponse est une redirection vers le détail, qui montre l'état réel : ni
+// message d'erreur, ni écran « introuvable ».
+//
 // « Introuvable » se répond par notFound() : code 404 et écran « Location
 // introuvable » quand JavaScript est actif. Sans JavaScript, Next répond à un
 // notFound() levé par une action par la page 404 générale (app/not-found.tsx),
@@ -97,7 +104,8 @@ export async function updateRentalAction(
     return { fields, errors: {}, formError: ERROR_MESSAGES.E8 };
   }
 
-  // 5. Arrivée sur le détail (R29).
+  // 5. Arrivée sur le détail (R29). C'est aussi la réponse à un état
+  // inapplicable (location archivée) : même destination, rien n'a été écrit.
   revalidateRentalPages();
   redirect(`/locations/${rental.id}`);
 }
@@ -182,6 +190,11 @@ export async function deleteRentalAction(
   }
 
   revalidateRentalPages();
+  if (written === "not-applicable") {
+    // La location a une quittance et n'est pas archivée : elle n'a pas été
+    // supprimée (R43 de la spécification 04). Arrivée sur son détail.
+    redirect(`/locations/${rental.id}`);
+  }
   redirect(DASHBOARD_PATH);
 }
 
@@ -249,11 +262,12 @@ async function readOwnedRental(
 // Étape 4 de R7 : exécute une écriture de rental-store. Entre la lecture et
 // l'écriture, la location a pu être supprimée dans un autre onglet : l'écriture,
 // filtrée sur le propriétaire, répond alors "not-found", et la réponse est la
-// même qu'à l'étape 2.
+// même qu'à l'étape 2. Elle a pu aussi changer d'état : l'écriture répond
+// "not-applicable", que l'action traduit en redirection vers le détail.
 async function writeRental(
   operation: string,
   write: () => Promise<UpdateRentalResult | DeleteRentalResult>,
-): Promise<"written" | "unavailable"> {
+): Promise<"written" | "not-applicable" | "unavailable"> {
   let result: UpdateRentalResult | DeleteRentalResult;
   try {
     result = await write();
@@ -267,7 +281,7 @@ async function writeRental(
   if (result === "not-found") {
     notFound();
   }
-  return "written";
+  return result === "not-applicable" ? "not-applicable" : "written";
 }
 
 // Étape 5. Le navigateur garde en mémoire les pages déjà affichées (tableau de

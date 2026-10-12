@@ -27,6 +27,7 @@ function rental(
     endDate,
     createdAt: new Date(createdAt),
     updatedAt: new Date(createdAt),
+    archivedAt: null,
   };
 }
 
