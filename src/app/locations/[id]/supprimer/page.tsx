@@ -17,6 +17,7 @@ import { buildRentalPath, readRentalAccess } from "../../rental-access";
 import { deleteRentalAction } from "../actions";
 import { ConfirmForm } from "../confirm-form";
 import { RentalReminder } from "../rental-reminder";
+import { readRentalReceiptCount } from "../rental-receipts";
 
 // Titre générique (R43), partagé avec la page par readRentalAccess.
 export async function generateMetadata({
@@ -56,7 +57,19 @@ export default async function DeleteRentalPage({
     notFound();
   }
 
-  const { rental } = access;
+  const { owner, rental } = access;
+  // R43 de la spécification 04 : une location qui a au moins une quittance ne
+  // se supprime pas directement. La page ne s'applique pas : retour au détail,
+  // qui l'explique. Ce contrôle n'est qu'un affichage : l'action de
+  // suppression porte la même condition dans son écriture, et c'est elle qui
+  // décide si une quittance est produite entre l'affichage et l'envoi.
+  const receiptCount = await readRentalReceiptCount(owner, rental.id);
+  if (receiptCount === "unavailable") {
+    return <ServiceUnavailable />;
+  }
+  if (receiptCount > 0) {
+    redirect(`/locations/${rental.id}`);
+  }
   // L'identifiant est lié à l'action sur le serveur, à partir de la location
   // relue en base. L'action refait tous les contrôles (../actions.ts).
   const deleteThisRental = deleteRentalAction.bind(null, rental.id);

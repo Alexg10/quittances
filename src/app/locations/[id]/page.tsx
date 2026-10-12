@@ -14,6 +14,7 @@ import {
 } from "@/auth/return-path";
 import {
   DESTRUCTIVE_BUTTON_SMALL_CLASSES,
+  PRIMARY_BUTTON_LINK_CLASSES,
   SECONDARY_BUTTON_CLASSES,
 } from "@/components/button-styles";
 import { RentalStatusChip } from "@/components/rental-status-chip";
@@ -29,6 +30,8 @@ import { DashboardHeader } from "../../tableau-de-bord/dashboard-header";
 import { ServiceUnavailable } from "../../tableau-de-bord/service-unavailable";
 import { SignOutForm } from "../../tableau-de-bord/sign-out-form";
 import { buildRentalPath, readRentalAccess } from "../rental-access";
+import { ReceiptList } from "./receipt-list";
+import { readRentalReceipts } from "./rental-receipts";
 
 // Titres génériques : jamais une adresse ni un nom de locataire dans le titre
 // du document (R43). Un visiteur non connecté ne reçoit que le titre du site.
@@ -78,7 +81,17 @@ export default async function RentalPage({
     notFound();
   }
 
-  const { rental } = access;
+  const { owner, rental } = access;
+  // Les quittances de cette location, pour ce propriétaire (spécification 04).
+  // Une liste illisible n'est jamais rendue comme « Aucune quittance ».
+  const receipts = await readRentalReceipts(owner, rental.id);
+  if (receipts === "unavailable") {
+    return <ServiceUnavailable />;
+  }
+  // R43 de la spécification 04 : une location ne se supprime directement que si
+  // elle n'a aucune quittance. Ce n'est qu'un affichage : la condition est
+  // recontrôlée par l'écriture elle-même.
+  const hasReceipts = receipts.length > 0;
   // Le statut se calcule sur le serveur, à la date du jour à Paris (R20).
   const status = getRentalStatus(rental.endDate, getTodayInParis(new Date()));
   // Les liens sont construits avec l'identifiant lu en base, pas avec celui de
@@ -154,8 +167,28 @@ export default async function RentalPage({
           </DetailGroup>
 
           <section className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <h2 className="font-display text-body font-bold">Quittances</h2>
+              {/* Seul élément primaire de la page (R36 de la spécification 04). */}
+              <Link
+                href={`${rentalPath}/quittances/nouvelle`}
+                className={PRIMARY_BUTTON_LINK_CLASSES}
+              >
+                Produire une quittance
+              </Link>
+            </div>
+            {hasReceipts ? (
+              <ReceiptList receipts={receipts} />
+            ) : (
+              <p className="text-text-secondary">
+                Aucune quittance pour cette location.
+              </p>
+            )}
+          </section>
+
+          <section className="flex flex-col gap-4">
             <h2 className="font-display text-body font-bold">Actions</h2>
-            {/* Trois liens, pas des boutons : chacun mène à une page (R40).
+            {/* Des liens, pas des boutons : chacun mène à une page (R40).
                 Aucun n'agit par lui-même : afficher ou précharger une page ne
                 modifie jamais rien (R24). */}
             <div className="flex flex-wrap gap-3">
@@ -173,13 +206,23 @@ export default async function RentalPage({
                   ? "Modifier la fin de la location"
                   : "Mettre fin à la location"}
               </Link>
-              <Link
-                href={`${rentalPath}/supprimer`}
-                className={DESTRUCTIVE_BUTTON_SMALL_CLASSES}
-              >
-                Supprimer
-              </Link>
+              {/* Seulement sans quittance (R43 de la spécification 04). */}
+              {hasReceipts ? null : (
+                <Link
+                  href={`${rentalPath}/supprimer`}
+                  className={DESTRUCTIVE_BUTTON_SMALL_CLASSES}
+                >
+                  Supprimer
+                </Link>
+              )}
             </div>
+            {/* Un lien absent et expliqué plutôt qu'un lien indisponible. */}
+            {hasReceipts ? (
+              <p className="text-text-secondary">
+                Une location qui a des quittances ne peut pas être supprimée
+                directement. Archivez-la, puis supprimez-la depuis les archives.
+              </p>
+            ) : null}
           </section>
         </div>
       </main>

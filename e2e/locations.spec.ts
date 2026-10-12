@@ -75,7 +75,10 @@ test.describe("Locations : liste et création", () => {
     const documents = surveillerDocuments(page);
     await expect(page).toHaveTitle("Tableau de bord — Quittances");
     await expect(page.getByRole("heading", { level: 2 })).toHaveText("Aucune location pour l'instant");
-    await expect(page.getByRole("link")).toHaveCount(2);
+    // Liens désignés par leur nom (T5 ajoute « Archives »).
+    for (const nom of ["Quittances, tableau de bord", "Mes informations", "Ajouter une location"]) {
+      await expect(page.getByRole("link", { name: nom, exact: true })).toHaveCount(1);
+    }
     await expect(page.getByRole("button")).toHaveCount(1);
     await poserTemoin(page);
 
@@ -420,6 +423,7 @@ test.describe("Locations : liste et création", () => {
       "Le logement",
       "Le locataire",
       "Le loyer et le bail",
+      "Quittances",
       "Actions",
     ]);
     expect(await valeurDetail(page, "Complément d'adresse")).toBe("Bât. C");

@@ -21,6 +21,7 @@ import {
   toSearchString,
 } from "@/auth/return-path";
 
+import { LANDLORD_PATH } from "@/receipts/landlord-path";
 import { getTodayInParis } from "@/rentals/rental-dates";
 import { splitRentals } from "@/rentals/rental-list";
 import {
@@ -90,6 +91,14 @@ export default async function DashboardPage({
         <p className="wrap-anywhere text-text-secondary">
           Connecté en tant que{" "}
           <span className="text-text-primary">{owner.email}</span>
+        </p>
+        {/* Accès aux pages du compte (R24 de la spécification 04) : l'en-tête
+            n'a pas la place de les porter. Toujours présent, que les
+            informations soient renseignées ou non. */}
+        <p className="flex flex-wrap gap-4">
+          <Link href={LANDLORD_PATH} className="text-primary underline">
+            Mes informations
+          </Link>
         </p>
 
         {rentals.length === 0 ? (

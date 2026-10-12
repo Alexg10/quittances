@@ -650,3 +650,90 @@ describe("R14 (précision après la recette de T4) — forme canonique et destin
     });
   });
 });
+
+// Spécification 04, R33 : l'adresse de téléchargement d'une quittance n'est
+// jamais une destination de retour (y revenir déclencherait un téléchargement).
+describe("adresse de téléchargement d'une quittance (spécification 04, R33)", () => {
+  const UUID = "3f9a1c2e-7b4d-4e8a-9c1f-0a2b3c4d5e6f";
+
+  const REFUSEES = [
+    ["avec un UUID", `/quittances/${UUID}/pdf`],
+    ["avec un segment quelconque", "/quittances/x/pdf"],
+    ["avec un segment non UUID", "/quittances/pas-un-uuid/pdf"],
+    ["avec une chaîne de requête", `/quittances/${UUID}/pdf?a=1`],
+    ["avec une requête vide", `/quittances/${UUID}/pdf?`],
+    ["avec une ancre", `/quittances/${UUID}/pdf#haut`],
+    ["avec requête et ancre", `/quittances/${UUID}/pdf?a=1#haut`],
+    ["avec une barre finale", `/quittances/${UUID}/pdf/`],
+    ["avec plusieurs barres finales", `/quittances/${UUID}/pdf//`],
+    ["en majuscules", `/QUITTANCES/${UUID.toUpperCase()}/PDF`],
+    ["avec une casse mélangée", "/Quittances/x/Pdf"],
+    ["avec un « p » encodé", "/quittances/x/%70df"],
+    ["avec un « P » encodé", "/quittances/x/%50DF"],
+    ["avec « pdf » entièrement encodé", "/quittances/x/%70%64%66"],
+    ["avec un segment encodé", "/quittances/%78/pdf"],
+    ["avec « quittances » encodé", "/%71uittances/x/pdf"],
+  ] as const;
+
+  const ACCEPTEES = [
+    ["la page de suppression d'une quittance", `/quittances/${UUID}/supprimer`],
+    ["la page Mes informations", "/mes-informations"],
+    ["la page de production", "/locations/12/quittances/nouvelle"],
+    ["le détail d'une location", "/locations/12"],
+    ["un chemin au-delà de pdf", "/quittances/x/pdf/y"],
+    ["un chemin qui se termine par pdfs", "/quittances/x/pdfs"],
+    ["un chemin qui commence par pdf", "/quittances/x/pdf-2026"],
+    ["pdf sous un autre segment que quittances", "/documents/x/pdf"],
+    ["pdf en paramètre", "/tableau-de-bord?retour=/quittances/x/pdf"],
+    ["pdf en ancre", "/tableau-de-bord#/quittances/x/pdf"],
+  ] as const;
+
+  describe("getSafeReturnPath", () => {
+    it.each(REFUSEES)("R33 — refusée %s : %s", (_nom, valeur) => {
+      expect(getSafeReturnPath(valeur)).toBe(REPLI);
+    });
+
+    it.each(ACCEPTEES)("R33 — témoin accepté, %s : %s", (_nom, valeur) => {
+      expect(getSafeReturnPath(valeur)).toBe(valeur);
+    });
+  });
+
+  describe("isSafeReturnPath", () => {
+    it.each(REFUSEES)("R33 — refusée %s : %s", (_nom, valeur) => {
+      expect(isSafeReturnPath(valeur)).toBe(false);
+    });
+
+    it.each(ACCEPTEES)("R33 — témoin accepté, %s : %s", (_nom, valeur) => {
+      expect(isSafeReturnPath(valeur)).toBe(true);
+    });
+  });
+
+  describe("getSafeReturnPathFromPageUrl", () => {
+    const pageDeConnexion = (retour: string) =>
+      `http://localhost:3100/connexion?retour=${encodeURIComponent(retour)}`;
+
+    it.each(REFUSEES)("R33 — Referer portant une destination refusée %s : %s", (_nom, valeur) => {
+      expect(getSafeReturnPathFromPageUrl(pageDeConnexion(valeur))).toBe(REPLI);
+    });
+
+    it.each(ACCEPTEES)("R33 — Referer portant un témoin accepté, %s : %s", (_nom, valeur) => {
+      expect(getSafeReturnPathFromPageUrl(pageDeConnexion(valeur))).toBe(valeur);
+    });
+  });
+
+  describe("double encodage (spécification 02, R14, précision après T4)", () => {
+    // La précision de la spécification 02 refuse les formes doublement
+    // encodées des caractères « . », « / » et « \ » (%252e, %252f). Ici le
+    // double encodage porte sur une lettre : ce n'est pas l'adresse du Route
+    // Handler, qui lit « %70df » (une seule couche décodée par le serveur).
+    it("R33 — /quittances/x/%2570df est acceptée, comme tout double encodage d'une lettre ordinaire", () => {
+      expect(getSafeReturnPath("/quittances/x/%2570df")).toBe("/quittances/x/%2570df");
+      expect(getSafeReturnPath("/a/%2541")).toBe("/a/%2541");
+    });
+
+    it("R14 de la spécification 02 — le double encodage d'un point ou d'une barre reste refusé, y compris sous /quittances", () => {
+      expect(getSafeReturnPath("/quittances/%252e%252e/pdf")).toBe(REPLI);
+      expect(getSafeReturnPath("/quittances/x%252fy/pdf")).toBe(REPLI);
+    });
+  });
+});

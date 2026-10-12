@@ -44,7 +44,7 @@ const lireTemoin = (page: Page) =>
   page.evaluate(() => (window as unknown as { __temoin?: string }).__temoin);
 
 test.describe("Espace réservé", () => {
-  test("CA16 : contenus, deux liens (le logo et Ajouter une location) et un seul bouton", async ({ page }) => {
+  test("CA16 : contenus, liens désignés par leur nom (logo, Mes informations, Ajouter une location) et un seul bouton", async ({ page }) => {
     const { email } = await inscrire(page);
     await ouvrirTableauDeBord(page);
     await expect(page).toHaveTitle("Tableau de bord — Quittances");
@@ -58,7 +58,11 @@ test.describe("Espace réservé", () => {
     ).toBeVisible();
     await expect(page.getByRole("banner")).toHaveCount(1);
     await expect(page.getByRole("main")).toHaveCount(1);
-    await expect(page.getByRole("link")).toHaveCount(2);
+    // Liens désignés par leur nom, non par leur nombre : T5 ajoute « Archives » (spécification 04, CA19).
+    for (const nom of ["Quittances, tableau de bord", "Mes informations", "Ajouter une location"]) {
+      await expect(page.getByRole("link", { name: nom, exact: true })).toHaveCount(1);
+    }
+    await expect(page.getByRole("link", { name: "Mes informations", exact: true })).toHaveAttribute("href", "/mes-informations");
     const logo = page.getByRole("link", { name: "Quittances, tableau de bord" });
     await expect(logo).toHaveCount(1);
     await expect(logo).toHaveAttribute("href", "/tableau-de-bord");

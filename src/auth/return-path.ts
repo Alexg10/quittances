@@ -14,6 +14,15 @@ export const SIGN_UP_PATH = "/inscription";
 // propriétaire connecté en est redirigé (R22), on tournerait en rond.
 const PUBLIC_AUTH_PATHS = [SIGN_IN_PATH, SIGN_UP_PATH];
 
+// Les chemins internes qui ne sont pas des pages : ils ne sont jamais une
+// destination de retour non plus. Aujourd'hui un seul motif, le téléchargement
+// d'une quittance (/quittances/<un segment>/pdf, R33 de la spécification 04) :
+// y revenir après connexion déclencherait un téléchargement et laisserait
+// l'utilisateur devant le formulaire de connexion. Le segment n'est pas
+// examiné : toute adresse qui mène à ce Route Handler est refusée.
+// Chaque motif est comparé au chemin normalisé (voir normalizePathname).
+const NON_PAGE_PATH_PATTERNS = [/^\/quittances\/[^/]+\/pdf$/];
+
 // Origine fictive, pour analyser un chemin avec l'API URL du langage.
 // « .invalid » est un domaine réservé, qui ne désigne aucun site réel.
 const INTERNAL_ORIGIN = "http://interne.invalid";
@@ -138,7 +147,15 @@ function normalizeReturnPath(value: ReturnParam): string | null {
   }
 
   // Les pages publiques ne sont jamais une destination (R22).
-  if (PUBLIC_AUTH_PATHS.includes(normalizePathname(url.pathname))) {
+  // La comparaison porte sur le chemin reconstruit par l'analyse, ramené à une
+  // forme comparable, et non sur la chaîne reçue.
+  const comparablePath = normalizePathname(url.pathname);
+  if (PUBLIC_AUTH_PATHS.includes(comparablePath)) {
+    return null;
+  }
+  // Ni les chemins qui ne sont pas des pages, quels que soient les paramètres
+  // ou l'ancre qui les suivent.
+  if (NON_PAGE_PATH_PATTERNS.some((pattern) => pattern.test(comparablePath))) {
     return null;
   }
   return destination;

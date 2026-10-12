@@ -31,7 +31,9 @@ export type RentalAccess =
   // Sans distinction : location d'un autre compte, inexistante, supprimée, ou
   // identifiant mal formé (R5). Aucune raison n'est transmise à la page.
   | { kind: "not-found" }
-  | { kind: "found"; rental: Rental };
+  // `owner` accompagne la location : la page en a besoin pour lire ce qui
+  // dépend d'elle (ses quittances), toujours filtré sur ce propriétaire.
+  | { kind: "found"; owner: Owner; rental: Rental };
 
 // `cache` de React garde le résultat le temps d'une requête : generateMetadata
 // (le titre) et la page partagent une seule lecture, et rien n'est conservé
@@ -70,7 +72,9 @@ export const readRentalAccess = cache(
     // 2. La location, pour ce propriétaire et lui seul.
     try {
       const rental = await getRental(access.owner, rentalId);
-      return rental === null ? { kind: "not-found" } : { kind: "found", rental };
+      return rental === null
+        ? { kind: "not-found" }
+        : { kind: "found", owner: access.owner, rental };
     } catch (error) {
       unstable_rethrow(error);
       if (error instanceof RentalStoreError) {

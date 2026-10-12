@@ -1,11 +1,12 @@
 "use server";
 
 // Server Actions qui visent une location existante : modification, date de fin,
-// réouverture, suppression (R5, R7, R21 à R24, R29 à R31 de la spécification 03).
+// réouverture, suppression (R5, R7, R21 à R24, R29 à R31 de la spécification 03)
+// et production d'une quittance (R26 de la spécification 04).
 //
 // Ce sont des points d'entrée HTTP publics : n'importe qui peut leur envoyer un
-// POST sans passer par nos formulaires, avec les arguments de son choix. Les
-// quatre suivent donc le même schéma, écrit une seule fois dans ce fichier :
+// POST sans passer par nos formulaires, avec les arguments de son choix. Elles
+// suivent donc toutes le même schéma, écrit une seule fois dans ce fichier :
 //
 //   1. la session               -> readOwnedRental
 //   2. la location, pour ce propriétaire et lui seul  -> readOwnedRental
@@ -44,6 +45,19 @@ import { getCurrentOwner, type Owner } from "@/auth/current-owner";
 import { readTextField } from "@/auth/form-state";
 import { ERROR_MESSAGES } from "@/auth/messages";
 import { DASHBOARD_PATH, SIGN_IN_PATH } from "@/auth/return-path";
+import { getLandlord, LandlordStoreError } from "@/receipts/landlord-store";
+import type { LandlordValues } from "@/receipts/landlord-validation";
+import type { ReceiptFormState } from "@/receipts/receipt-form-state";
+import { RECEIPT_ERROR_MESSAGES } from "@/receipts/receipt-messages";
+import {
+  produceReceipt,
+  ReceiptStoreError,
+  type ProduceReceiptResult,
+} from "@/receipts/receipt-store";
+import {
+  readReceiptFormFields,
+  validateReceiptForm,
+} from "@/receipts/receipt-validation";
 import type { RentalFormState } from "@/rentals/rental-form-state";
 import type {
   ConfirmFormState,
@@ -198,6 +212,131 @@ export async function deleteRentalAction(
   redirect(DASHBOARD_PATH);
 }
 
+// --- Production d'une quittance (R6, R25 et R26 de la spécification 04) -------
+
+// Ordre des contrôles (R26) : la session ; la location de ce propriétaire ; son
+// état d'archivage ; la présence des informations du bailleur ; la validation de
+// tous les champs ; puis l'écriture, qui recontrôle tout dans une transaction
+// et où la contrainte d'unicité de la base tranche.
+export async function produceReceiptAction(
+  rentalId: unknown,
+  previousState: ReceiptFormState,
+  formData: FormData,
+): Promise<ReceiptFormState> {
+  // Seuls les cinq champs du formulaire sont lus. Un champ `ownerId`,
+  // `landlordName`, `tenantName`, `periodStart` ou `issueDate` ajouté à la
+  // requête n'est jamais regardé : ces valeurs sont relues en base (R6).
+  const submitted = readReceiptFormFields(formData);
+  // Ce que l'action renvoie quand elle n'aboutit pas : les valeurs saisies,
+  // sauf la case d'attestation, toujours décochée au réaffichage (R14).
+  const fields = { ...submitted, attestation: "" };
+
+  // Un seul instant pour toute l'action, lu une fois sur l'horloge du serveur.
+  // Il sert à la validation (mois acceptés, date du paiement), puis il est
+  // passé tel quel au magasin, qui en tire la date d'émission. Avec deux
+  // lectures de l'horloge de part et d'autre de minuit, une date de paiement
+  // acceptée par la validation pourrait être refusée par la base.
+  const now = new Date();
+
+  // 1 et 2. La session, puis la location de ce propriétaire. Pour la location
+  // d'un autre compte, la réponse est « Location introuvable », donnée ici,
+  // avant toute validation : jamais un message de champ.
+  const access = await readOwnedRental("Production de quittance", rentalId);
+  if (access.kind === "unavailable") {
+    return { fields, errors: {}, formError: ERROR_MESSAGES.E8 };
+  }
+  const { owner, rental } = access;
+
+  // 3. Une location archivée ne reçoit pas de quittance : retour à son détail,
+  // sans message (R40).
+  if (rental.archivedAt !== null) {
+    redirect(`/locations/${rental.id}`);
+  }
+
+  // 4. Les informations du bailleur, avant tout champ (Q7).
+  let landlord: LandlordValues | null;
+  try {
+    landlord = await getLandlord(owner);
+  } catch (error) {
+    if (error instanceof LandlordStoreError) {
+      console.error(
+        "Production de quittance : informations du bailleur illisibles",
+        error.name,
+      );
+      return { fields, errors: {}, formError: ERROR_MESSAGES.E8 };
+    }
+    throw error;
+  }
+  if (landlord === null) {
+    return { fields, errors: {}, formError: RECEIPT_ERROR_MESSAGES.Q7 };
+  }
+
+  // 5. Tous les champs ensemble. Les dates du bail qui bornent les mois
+  // acceptés sont celles qui viennent d'être relues en base.
+  const validation = validateReceiptForm(submitted, {
+    startDate: rental.startDate,
+    endDate: rental.endDate,
+    now,
+  });
+  if (!validation.ok) {
+    return { fields: validation.fields, errors: validation.errors };
+  }
+
+  // 6. L'écriture. Le magasin reverrouille et relit la location et les
+  // informations du bailleur dans sa transaction : ce sont ces valeurs-là qui
+  // sont figées, pas celles lues aux étapes 2 et 4.
+  let result: ProduceReceiptResult;
+  try {
+    result = await produceReceipt(
+      owner,
+      rental.id,
+      {
+        month: validation.values.month,
+        rentInCents: validation.values.rentInCents,
+        chargesInCents: validation.values.chargesInCents,
+        paymentDate: validation.values.paymentDate,
+      },
+      now,
+    );
+  } catch (error) {
+    if (error instanceof ReceiptStoreError) {
+      console.error("Production de quittance : écriture impossible", error.name);
+      return { fields, errors: {}, formError: ERROR_MESSAGES.E8 };
+    }
+    throw error;
+  }
+
+  // 7. Chacun des huit résultats du magasin a sa réponse. Tous sauf "produced"
+  // signifient que rien n'a été écrit. La plupart ne peuvent arriver que si
+  // quelque chose a changé entre les étapes ci-dessus et la transaction (autre
+  // onglet, requête rejouée).
+  switch (result.status) {
+    case "produced":
+      // La quittance figure dans la section « Quittances » du détail.
+      revalidateRentalPages();
+      redirect(`/locations/${rental.id}`);
+    case "rental-not-found":
+      // Supprimée entre-temps : même réponse qu'à l'étape 2.
+      notFound();
+    case "rental-archived":
+      revalidateRentalPages();
+      redirect(`/locations/${rental.id}`);
+    case "landlord-missing":
+      return { fields, errors: {}, formError: RECEIPT_ERROR_MESSAGES.Q7 };
+    case "month-not-accepted":
+      // Les dates du bail ont changé depuis la validation.
+      return { fields, errors: { month: "Q2" } };
+    case "rental-not-displayable":
+      return { fields, errors: {}, formError: RECEIPT_ERROR_MESSAGES.Q8 };
+    case "landlord-not-displayable":
+      return { fields, errors: {}, formError: RECEIPT_ERROR_MESSAGES.Q9 };
+    case "already-exists":
+      // R15 : la contrainte d'unicité a tranché. La quittance existante est
+      // intacte.
+      return { fields, errors: { month: "Q3" } };
+  }
+}
+
 // --- Le schéma commun --------------------------------------------------------
 // Ces fonctions ne sont pas exportées : dans un fichier "use server", seul ce
 // qui est exporté devient une Server Action appelable par le navigateur.
@@ -289,6 +428,7 @@ async function writeRental(
 // soient redemandées au serveur à la prochaine visite (R30).
 function revalidateRentalPages(): void {
   revalidatePath(DASHBOARD_PATH);
-  // "layout" : le détail et toutes les pages placées sous /locations/<id>.
+  // "layout" : le détail et toutes les pages placées sous /locations/<id>, dont
+  // la page de production d'une quittance.
   revalidatePath("/locations/[id]", "layout");
 }

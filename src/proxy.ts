@@ -14,8 +14,11 @@
 // elle-même. Faites ici, elles partent plus tôt, avant tout rendu, et leur
 // réponse n'a aucun contenu.
 //
-// Il refuse aussi, par un code 400, une adresse illisible sous /locations/
-// (voir isDecodable).
+// Il refuse aussi, par un code 400, une adresse illisible sous /locations/ ou
+// /quittances/ (voir isDecodable).
+//
+// Une adresse fait exception au point 2 : le téléchargement d'une quittance
+// (voir isReceiptDownloadPath).
 //
 // La protection réelle reste dans chaque page et chaque Server Action, qui
 // appellent getCurrentOwner(). Si ce fichier était supprimé ou si son `matcher`
@@ -42,10 +45,29 @@ const PUBLIC_PATHS = [SIGN_IN_PATH, SIGN_UP_PATH];
 // La liste des locations est le tableau de bord : cette adresse y renvoie.
 const RENTALS_PATH = "/locations";
 
+// Section des quittances (spécification 04).
+const RECEIPTS_PATH = "/quittances";
+
+// /quittances/<un segment>/pdf : le téléchargement d'une quittance. Seule la
+// forme de l'adresse est regardée : le segment n'est ni lu ni comparé à quoi
+// que ce soit.
+const RECEIPT_DOWNLOAD_PATH = /^\/quittances\/[^/]+\/pdf$/;
+
 function isProtectedPath(pathname: string): boolean {
   return !PUBLIC_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
+}
+
+// Vrai pour l'adresse de téléchargement d'une quittance (R33 de la
+// spécification 04). Le proxy ne redirige jamais cette adresse : c'est le Route
+// Handler qui répond à un visiteur sans session, par une redirection vers
+// /connexion SANS paramètre `retour` (revenir après connexion sur une adresse
+// qui déclenche un téléchargement laisserait l'utilisateur devant le formulaire
+// de connexion). Une seule fonction décide ainsi de cette réponse, pour GET
+// comme pour HEAD.
+function isReceiptDownloadPath(pathname: string): boolean {
+  return RECEIPT_DOWNLOAD_PATH.test(pathname);
 }
 
 // Faux pour un chemin dont l'encodage est invalide (« /locations/% »). Next ne
@@ -67,13 +89,28 @@ export async function proxy(request: NextRequest) {
   // (voir ./auth/session-renewal).
   const session = await checkAndRenewSession(request.headers, hasSessionCookie);
 
+  const { pathname, search } = request.nextUrl;
+
+  // Téléchargement d'une quittance, quelle que soit la méthode : la session
+  // vient d'être prolongée ci-dessus comme pour toute autre adresse, puis la
+  // requête passe au Route Handler, qui contrôle lui-même la session. Seule
+  // une adresse illisible est arrêtée ici, par un code 400 sans contenu : Next
+  // ne saurait pas en tirer la valeur du segment.
+  if (isReceiptDownloadPath(pathname)) {
+    if (!isDecodable(pathname)) {
+      return new NextResponse(null, {
+        status: 400,
+        headers: { "Cache-Control": "private, no-store" },
+      });
+    }
+    return NextResponse.next();
+  }
+
   // Seules les lectures sont redirigées. Un POST est l'appel d'une Server
   // Action : elle vérifie la session elle-même et décide de la suite.
   if (request.method !== "GET") {
     return NextResponse.next();
   }
-
-  const { pathname, search } = request.nextUrl;
 
   if (isProtectedPath(pathname)) {
     // Dans le doute ("unknown", base injoignable), on laisse passer : la page
@@ -89,10 +126,14 @@ export async function proxy(request: NextRequest) {
     if (session === "valid" && pathname === RENTALS_PATH) {
       return NextResponse.redirect(new URL(DASHBOARD_PATH, request.url));
     }
-    // Adresse illisible sous /locations/ : 400 « requête incorrecte », sans
-    // contenu, plutôt que l'erreur 500 de Next. Le proxy ne juge ici que la
-    // forme de l'adresse : la réponse est la même qu'une location existe ou non.
-    if (pathname.startsWith(`${RENTALS_PATH}/`) && !isDecodable(pathname)) {
+    // Adresse illisible sous /locations/ ou /quittances/ : 400 « requête
+    // incorrecte », sans contenu, plutôt que l'erreur 500 de Next. Le proxy ne
+    // juge ici que la forme de l'adresse : la réponse est la même qu'une
+    // location ou une quittance existe ou non.
+    const hasDynamicSegment =
+      pathname.startsWith(`${RENTALS_PATH}/`) ||
+      pathname.startsWith(`${RECEIPTS_PATH}/`);
+    if (hasDynamicSegment && !isDecodable(pathname)) {
       return new NextResponse(null, { status: 400 });
     }
     return NextResponse.next();
@@ -126,9 +167,14 @@ export const config = {
   // spécification 03), que l'adresse existe ou non. Le proxy n'y lit que la
   // session : jamais une location, jamais l'identifiant de l'adresse. Savoir à
   // qui appartient une location reste l'affaire de la page.
+  //
+  // "/mes-informations/:path*" et "/quittances/:path*" (spécification 04) suivent la
+  // même règle : le proxy n'y lit que la session, jamais une quittance.
   matcher: [
     "/tableau-de-bord/:path*",
     "/locations/:path*",
+    "/mes-informations/:path*",
+    "/quittances/:path*",
     "/connexion",
     "/inscription",
   ],
