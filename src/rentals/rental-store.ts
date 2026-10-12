@@ -12,6 +12,10 @@
 //    seule requête, filtrée à la fois sur l'identifiant et sur le propriétaire.
 //    Il n'existe aucune lecture par identifiant seul.
 // 3. Une erreur de base ne transporte jamais de donnée de locataire (R43).
+//
+// Une quatrième règle concerne les écritures : elles passent toutes par
+// runWrite (en bas du fichier), qui garantit qu'une écriture ayant échoué pour
+// cause de délai ne s'exécutera jamais plus tard (R31).
 import "server-only";
 
 import { and, asc, count, eq, sql } from "drizzle-orm";
@@ -19,7 +23,7 @@ import { and, asc, count, eq, sql } from "drizzle-orm";
 // `import type` : seul le type est importé, il disparaît à la compilation. Ce
 // module ne charge donc ni next/headers ni Better Auth.
 import type { Owner } from "../auth/current-owner";
-import { getDb } from "../db";
+import { getDb, runWriteTransaction, type WriteTransaction } from "../db";
 import { rental } from "../db/schema";
 import { isRentalId } from "./rental-id";
 
@@ -108,17 +112,17 @@ const rentalColumns = {
 // peuvent donc toutes deux lire « 99 » et aboutir à 101 locations. La
 // spécification l'accepte : la limite sert à garder la liste sur une page, ce
 // n'est pas une barrière de sécurité. La rendre exacte demanderait une
-// transaction qui verrouille la ligne du compte.
+// transaction qui verrouille la ligne du compte. La transaction de runWrite
+// n'y change rien : au niveau d'isolation par défaut de Postgres, chacune des
+// deux créations compte sans voir l'insertion non validée de l'autre.
 export async function createRental(
   owner: Owner,
   values: RentalValues,
 ): Promise<CreateRentalResult> {
   const ownerId = requireOwnerId(owner);
 
-  return runQuery("créer", async () => {
-    const db = getDb();
-
-    const [{ total }] = await db
+  return runWrite("créer", async (tx) => {
+    const [{ total }] = await tx
       .select({ total: count() })
       .from(rental)
       .where(eq(rental.ownerId, ownerId));
@@ -126,7 +130,7 @@ export async function createRental(
       return { status: "limit-reached" };
     }
 
-    const [created] = await db
+    const [created] = await tx
       .insert(rental)
       // Les champs sont recopiés un par un : un champ en trop dans `values`
       // (un identifiant, une date de fin) ne peut pas atteindre la base.
@@ -139,6 +143,10 @@ export async function createRental(
 // Toutes les locations de `owner`, de la plus ancienne à la plus récente. Le
 // regroupement « en cours » et « terminées » dépend de la date du jour : c'est
 // une règle d'affichage, appliquée par l'appelant (R35).
+//
+// Les deux lectures (listRentals, getRental) ne passent volontairement pas par
+// runWrite : une lecture abandonnée par le pilote ne laisse aucun effet si
+// Postgres la termine plus tard. Le délai du pilote leur suffit.
 export async function listRentals(owner: Owner): Promise<Rental[]> {
   const ownerId = requireOwnerId(owner);
 
@@ -211,8 +219,8 @@ export async function deleteRental(
     return "not-found";
   }
 
-  return runQuery("supprimer", async () => {
-    const deletedRows = await getDb()
+  return runWrite("supprimer", async (tx) => {
+    const deletedRows = await tx
       .delete(rental)
       .where(ownedRental(ownerId, rentalId))
       .returning({ id: rental.id });
@@ -236,8 +244,8 @@ async function updateOwnedRental(
     return "not-found";
   }
 
-  return runQuery(operation, async () => {
-    const updatedRows = await getDb()
+  return runWrite(operation, async (tx) => {
+    const updatedRows = await tx
       .update(rental)
       // now() : l'horloge de la base, comme pour created_at.
       .set({ ...changes, updatedAt: sql`now()` })
@@ -289,6 +297,28 @@ function pickValues(values: RentalValues): RentalValues {
     dueDay: values.dueDay,
     startDate: values.startDate,
   };
+}
+
+// Exécute une écriture de telle sorte qu'elle ne puisse pas aboutir après avoir
+// été déclarée en échec (R31 : « une action qui échoue n'écrit rien »).
+//
+// Le problème : le délai du pilote n'annule rien dans Postgres. Une écriture
+// qui attend un verrou plus de cinq secondes est abandonnée par le pilote,
+// l'utilisateur voit le message de panne, puis Postgres l'exécute quand même
+// dès que le verrou est levé.
+//
+// La solution est dans runWriteTransaction (src/db/index.ts) : l'écriture a
+// lieu dans une transaction où Postgres annule lui-même ce qui attend trop
+// longtemps, et rien n'est définitif avant COMMIT. L'erreur d'annulation
+// devient une RentalStoreError comme toute autre erreur de base.
+//
+// Ne pas remplacer cet appel par `getDb().transaction(…)` : voir pourquoi
+// au-dessus de runWriteTransaction.
+async function runWrite<Result>(
+  operation: string,
+  write: (tx: WriteTransaction) => Promise<Result>,
+): Promise<Result> {
+  return runQuery(operation, () => runWriteTransaction(write));
 }
 
 // Exécute une requête et remplace toute erreur par une RentalStoreError, qui ne

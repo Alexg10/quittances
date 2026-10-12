@@ -528,7 +528,10 @@ test.describe("Locations : modification, date de fin, réouverture", () => {
 
     // Rejouer la requête : même résultat (redirection vers le détail), sans erreur ni écriture.
     const rejouee = requetes.find((r) => r.url.endsWith("/fin"))!;
-    const { host: _h, "content-length": _c, ...entetes } = rejouee.entetes;
+    // En-têtes de la requête d'origine, sans ceux que le client HTTP recalcule lui-même.
+    const entetes = { ...rejouee.entetes };
+    delete entetes.host;
+    delete entetes["content-length"];
     const reponse = await page.context().request.post(rejouee.url, { headers: entetes, data: rejouee.corps!, maxRedirects: 0 });
     expect([200, 303]).toContain(reponse.status());
     expect(reponse.headers()["x-action-redirect"] ?? reponse.headers()["location"] ?? "").toContain(`/locations/${L.id}`);
@@ -680,7 +683,10 @@ test.describe("Locations : suppression seulement par POST (R24)", () => {
 
       // Rejeu de la requête de suppression : « Location introuvable », l'autre location intacte.
       const rejouee = requetes[requetes.length - 1];
-      const { host: _h, "content-length": _c, ...entetes } = rejouee.entetes;
+      // En-têtes de la requête d'origine, sans ceux que le client HTTP recalcule lui-même.
+      const entetes = { ...rejouee.entetes };
+      delete entetes.host;
+      delete entetes["content-length"];
       const rejeu = await ctx.post(rejouee.url, { headers: entetes, data: rejouee.corps!, maxRedirects: 0 });
       expect(rejeu.status()).toBe(404);
       expect((await locationsDuCompte(a.email)).map((l) => l.id)).toEqual([autre.id]);

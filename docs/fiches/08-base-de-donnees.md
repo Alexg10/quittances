@@ -27,6 +27,16 @@ Un ORM ne dispense pas de connaître SQL : il faut savoir quelle requête part r
 
 Chaque table métier porte l'identifiant du propriétaire, et **chaque requête est filtrée dessus**, à partir de la session lue côté serveur, jamais à partir d'un identifiant envoyé par le navigateur. Postgres permet d'ajouter une seconde barrière, la sécurité au niveau des lignes (RLS), qui refuse au niveau de la base ce que le code aurait oublié de filtrer.
 
+## Délais : côté client ou côté serveur
+
+Un délai posé sur le pilote (`query_timeout` de `pg`) est un minuteur **côté client** : passé ce délai, l'application reçoit une erreur, mais la requête reste en file dans Postgres et s'exécute quand elle le peut. Trouvé en recette : une modification affichait « service indisponible », puis s'appliquait quand même une fois le verrou levé.
+
+Pour qu'une écriture ne s'exécute jamais après son délai, c'est Postgres qui doit l'annuler : `lock_timeout` (attente d'un verrou) et `statement_timeout` (durée de l'instruction), plus courts que le délai du pilote.
+
+Avec un répartiteur de connexions en mode transaction (PgBouncer, le « pooler » de Neon), un réglage de session ne tient pas : la connexion serveur change d'une requête à l'autre. On le pose pour la transaction (`SET LOCAL`, ou `set_config(nom, valeur, true)`).
+
+Second piège : une transaction interrompue par le délai du pilote peut laisser la connexion dans une transaction ouverte. Rendue au pool, elle « empoisonne » la requête suivante, qui s'exécute sans jamais être validée. Règle retenue : une connexion ne retourne au pool qu'après un `COMMIT` réussi ; sinon on la détruit.
+
 ## Questions d'entretien
 
 **Pourquoi SQL plutôt que NoSQL ici ?**
