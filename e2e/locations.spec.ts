@@ -90,9 +90,11 @@ test.describe("Locations : liste et création", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ajouter une location");
     await expect(page.getByRole("main")).toHaveCount(1);
     await attendreHydratation(page);
-    for (const champ of await page.locator("main form input:not([type=hidden])").all()) {
+    // La case d'accord (spécification 05) a toujours la valeur « on » : elle est vérifiée décochée, à part.
+    for (const champ of await page.locator("main form input:not([type=hidden]):not([type=checkbox])").all()) {
       await expect(champ).toHaveValue("");
     }
+    await expect(page.locator("main form input[type=checkbox]")).not.toBeChecked();
     await expect(page.locator("main form [role=alert]")).toHaveCount(0);
     expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
     await expect(page.getByRole("link", { name: "Annuler" })).toHaveAttribute("href", "/tableau-de-bord");
