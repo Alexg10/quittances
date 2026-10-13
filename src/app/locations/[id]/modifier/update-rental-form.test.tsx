@@ -74,7 +74,8 @@ describe("UpdateRentalForm (R32, CA32)", () => {
     const { container } = setup();
 
     expect(container.querySelectorAll('input[type="hidden"]')).toHaveLength(0);
-    expect(container.querySelectorAll("[name]")).toHaveLength(10);
+    // Dix champs et la case d'accord (R1 de la spécification 05).
+    expect(container.querySelectorAll("[name]")).toHaveLength(11);
     for (const c of container.querySelectorAll("input")) {
       expect(c.outerHTML).not.toContain("7f3b2c1a");
     }
@@ -120,12 +121,14 @@ describe("UpdateRentalForm (R32, CA32)", () => {
     expect(screen.getByLabelText("Loyer hors charges")).toHaveValue("1250,50");
   });
 
-  it("R34 — l'envoi transmet les dix champs et rien d'autre", async () => {
+  it("R34 — l'envoi transmet les dix champs et rien d'autre ; la case d'accord décochée n'est pas transmise", async () => {
     const { action } = setup();
 
     await userEvent.click(screen.getByRole("button", { name: "Enregistrer les modifications" }));
 
     const data = action.mock.calls[0][1];
-    expect([...data.keys()].sort()).toEqual(Object.keys(INITIAL.fields).sort());
+    // Une case décochée n'est jamais envoyée par un formulaire HTML.
+    const attendus = Object.keys(INITIAL.fields).filter((name) => name !== "emailConsent");
+    expect([...data.keys()].sort()).toEqual(attendus.sort());
   });
 });
