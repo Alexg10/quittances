@@ -48,6 +48,16 @@ Dernière mise à jour : 2026-10-10
 
 ### Prochaine étape
 
+Sixième fonctionnalité : **échéances et envoi automatique**. Le jour J (réglable par location), le propriétaire reçoit un e-mail ; s'il confirme la réception du loyer par le bouton du message, la quittance est produite et envoyée au locataire automatiquement (`sendReceipt`, si l'accord est enregistré) ; sinon le locataire est relancé. Notions à expliquer puis décider, une à la fois, avant la spécification :
+
+1. Les **tâches planifiées** : qui déclenche le traitement du jour J (cron de l'hébergeur, Route Handler protégé par un secret, travailleur), idempotence, fuseau de Paris.
+2. Le **lien d'action dans un e-mail** : jeton signé à usage unique, expiration, et le fait qu'un GET suivi par une messagerie ou un antivirus ne doit rien écrire (page de confirmation, puis POST).
+3. Le premier e-mail **au propriétaire**, et la relance du locataire (ton, fréquence, arrêt).
+
+À régler avant ouverture au public : nom de domaine d'expédition et branchement de Resend ; tests de l'envoi par e-mail (aucun n'a été écrit pour la fonctionnalité 05).
+
+### Fonctionnalité 05 — envoi d'une quittance par e-mail (terminée)
+
 Cinquième fonctionnalité : **envoi d'e-mails** (la quittance part au locataire en pièce jointe). Deux choses à expliquer puis décider, une à la fois, avant la spécification :
 
 1. Le choix du **service d'envoi** : **décidé le 2026-10-13**. L'utilisateur n'a pas encore de nom de domaine : on développe d'abord **en mode test, sans service tiers** (un seul module d'envoi, avec un transport local qui n'envoie rien de réel) ; le service retenu pour la suite est **Resend** (avec React Email pour les gabarits), à brancher quand un domaine d'expédition existera (SPF, DKIM, DMARC). Le domaine devient un point à régler avant ouverture au public.
@@ -65,7 +75,7 @@ Spécification `docs/specs/05-envoi-des-quittances-par-e-mail.md` rédigée (28 
 
 **T3 développée et commitée** : page et action `/quittances/[id]/envoyer` (formulaire, blocs « Accord manquant », « Envoi en cours », « Envoi indisponible », messages M2 à M5), ligne d'état et lien d'envoi dans la liste des quittances, phrase de R13 sur la page de suppression, refus de supprimer pendant un envoi, variables d'e-mail dans `playwright.config.ts`. Gabarit : la fonction pure est conservée (recommandation appliquée, l'utilisateur n'a pas tranché). Vérifié par le développeur sur un build servi contre la base de test : envoi depuis la page, renvoi, accord manquant, location archivée, 404 identique pour un autre compte, journal sans donnée. **Non vérifié** : action en POST sans session, avec champs forgés ou sur la quittance d'un autre compte ; double clic ; messages M2 à M5 à l'écran ; suppression refusée pendant un envoi ; fonctionnement sans JavaScript ; 320 px ; aucun test lancé ni écrit pour la fonctionnalité 05.
 
-**Suites lancées par l'utilisateur le 2026-10-13** : trois tests rendus faux par la case d'accord (deux Vitest du formulaire de modification, un e2e du formulaire vide) corrigés ; l'utilisateur rapporte ensuite que tout est vert (`pnpm test`, `pnpm test:integration`, `pnpm test:e2e`). Aucun test nouveau ne couvre l'envoi par e-mail. Fiche 19 écrite. **Étape en cours : accord de l'utilisateur pour fusionner `envoi-emails` dans `main`.**
+**Suites lancées par l'utilisateur le 2026-10-13** : trois tests rendus faux par la case d'accord (deux Vitest du formulaire de modification, un e2e du formulaire vide) corrigés ; l'utilisateur rapporte ensuite que tout est vert (`pnpm test`, `pnpm test:integration`, `pnpm test:e2e`). Aucun test nouveau ne couvre l'envoi par e-mail. Fiche 19 écrite. **Fonctionnalité 05 fusionnée dans `main` le 2026-10-13** (accord de l'utilisateur).
 
 Cette fonctionnalité débloque aussi la réinitialisation du mot de passe et la vérification de l'adresse du propriétaire.
 
