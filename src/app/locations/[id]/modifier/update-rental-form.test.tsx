@@ -22,6 +22,7 @@ const INITIAL: RentalFormState = {
     city: "Lyon",
     tenantName: "Marie Durand",
     tenantEmail: "marie@quittances.test",
+    emailConsent: "",
     rent: "1250,50",
     charges: "0,00",
     dueDay: "5",

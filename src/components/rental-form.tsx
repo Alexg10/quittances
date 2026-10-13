@@ -23,8 +23,12 @@ import {
   type RentalFormFieldSpec,
 } from "@/rentals/rental-form-layout";
 import type { RentalFormState } from "@/rentals/rental-form-state";
-import { rentalErrorMessage } from "@/rentals/rental-validation";
+import {
+  CHECKED_VALUE,
+  rentalErrorMessage,
+} from "@/rentals/rental-validation";
 
+import { CheckboxField } from "./checkbox-field";
 import { Field } from "./field";
 import { FormMessage } from "./form-message";
 import { SubmitButton } from "./submit-button";
@@ -103,6 +107,22 @@ type RentalFormFieldProps = {
 function RentalFormField({ spec, state }: RentalFormFieldProps) {
   const errorCode = state.errors[spec.name];
   const value = state.fields[spec.name];
+
+  if (spec.type === "checkbox") {
+    return (
+      <CheckboxField
+        id={spec.name}
+        name={spec.name}
+        label={spec.label}
+        // Cochée selon l'état : jamais à la création (état vide), cochée à la
+        // modification si l'accord est enregistré, restituée après une erreur.
+        defaultChecked={value === CHECKED_VALUE}
+        error={errorCode ? rentalErrorMessage(errorCode) : undefined}
+        hint={spec.hint}
+      />
+    );
+  }
+
   // Un champ de date ne sait afficher qu'une date qui existe : toute autre
   // valeur est remplacée par un champ vide (voir toDateInputValue).
   const defaultValue = spec.type === "date" ? toDateInputValue(value) : value;

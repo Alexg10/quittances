@@ -29,8 +29,9 @@ import {
 } from "./rental-text";
 import type { RentalValues } from "./rental-store";
 
-// Les dix champs, dans l'ordre du formulaire (R33). Ce sont aussi les attributs
-// `name` des champs : l'action n'en lit pas d'autres (R7).
+// Les onze champs, dans l'ordre du formulaire (R33, R1 de la spécification 05).
+// Ce sont aussi les attributs `name` des champs : l'action n'en lit pas d'autres
+// (R7). `emailConsent` est la case d'accord du locataire.
 export const RENTAL_FORM_FIELDS = [
   "address",
   "addressComplement",
@@ -38,6 +39,7 @@ export const RENTAL_FORM_FIELDS = [
   "city",
   "tenantName",
   "tenantEmail",
+  "emailConsent",
   "rent",
   "charges",
   "dueDay",
@@ -46,7 +48,11 @@ export const RENTAL_FORM_FIELDS = [
 
 export type RentalFormField = (typeof RENTAL_FORM_FIELDS)[number];
 
-// Ce que le navigateur envoie : dix chaînes, telles que saisies.
+// Valeur envoyée par une case cochée sans attribut `value`. Décochée, la case
+// n'envoie rien : le champ lu vaut "".
+export const CHECKED_VALUE = "on";
+
+// Ce que le navigateur envoie : onze chaînes, telles que saisies.
 export type RentalFormFields = Record<RentalFormField, string>;
 
 // Un code d'erreur par champ en erreur (le premier applicable, R10).
@@ -61,13 +67,14 @@ export const EMPTY_RENTAL_FORM_FIELDS: RentalFormFields = {
   city: "",
   tenantName: "",
   tenantEmail: "",
+  emailConsent: "",
   rent: "",
   charges: "",
   dueDay: "",
   startDate: "",
 };
 
-// Lit les dix champs d'une requête. Un champ absent, en double ou envoyé comme
+// Lit les onze champs d'une requête. Un champ absent, en double ou envoyé comme
 // fichier donne "" (voir readTextField) : il sera traité comme non rempli.
 export function readRentalFormFields(formData: FormData): RentalFormFields {
   return {
@@ -77,6 +84,9 @@ export function readRentalFormFields(formData: FormData): RentalFormFields {
     city: readTextField(formData, "city"),
     tenantName: readTextField(formData, "tenantName"),
     tenantEmail: readTextField(formData, "tenantEmail"),
+    // Aucun champ de date d'accord n'est lu : la date vient de la case seule
+    // (R1 de la spécification 05).
+    emailConsent: readTextField(formData, "emailConsent"),
     rent: readTextField(formData, "rent"),
     charges: readTextField(formData, "charges"),
     dueDay: readTextField(formData, "dueDay"),
@@ -85,7 +95,12 @@ export function readRentalFormFields(formData: FormData): RentalFormFields {
 }
 
 export type RentalFormValidation =
-  | { ok: true; values: RentalValues }
+  | {
+      ok: true;
+      values: RentalValues;
+      // La case d'accord du locataire (R1 de la spécification 05).
+      emailConsent: boolean;
+    }
   | {
       ok: false;
       // Les valeurs à remettre dans les champs : telles que saisies, sauf une
@@ -186,6 +201,7 @@ export function validateRentalForm(
       dueDay,
       startDate,
     },
+    emailConsent: fields.emailConsent === CHECKED_VALUE,
   };
 }
 
@@ -228,7 +244,11 @@ export function rentalErrorMessage(code: RentalErrorCode): string {
 
 // Valeurs enregistrées -> valeurs de départ du formulaire de modification (R16,
 // R32). La date de début est déjà au format du champ de date.
-export function toRentalFormFields(values: RentalValues): RentalFormFields {
+export function toRentalFormFields(
+  values: RentalValues,
+  // Vrai quand la location porte une date d'accord (R1 de la spécification 05).
+  emailConsent: boolean,
+): RentalFormFields {
   return {
     address: values.address,
     addressComplement: values.addressComplement ?? "",
@@ -236,6 +256,7 @@ export function toRentalFormFields(values: RentalValues): RentalFormFields {
     city: values.city,
     tenantName: values.tenantName,
     tenantEmail: values.tenantEmail,
+    emailConsent: emailConsent ? CHECKED_VALUE : "",
     rent: formatAmountForInput(values.rentInCents),
     charges: formatAmountForInput(values.chargesInCents),
     dueDay: String(values.dueDay),

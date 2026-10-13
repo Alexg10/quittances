@@ -882,7 +882,7 @@ test.describe("Locations : accessibilité et clavier", () => {
     await analyser(page, "introuvable");
   });
 
-  test("CA44, R33 : au clavier seul, le logo en premier, puis les dix champs dans l'ordre, le bouton et Annuler, avec un focus visible", async ({ page }) => {
+  test("CA44, R33 : au clavier seul, le logo en premier, puis les onze champs (la case d'accord après l'adresse e-mail) dans l'ordre, le bouton et Annuler, avec un focus visible", async ({ page }) => {
     await inscrire(page);
     await ouvrirCreation(page);
     await page.locator("body").click({ position: { x: 1, y: 1 } });
@@ -896,6 +896,7 @@ test.describe("Locations : accessibilité et clavier", () => {
       page.getByLabel("Ville"),
       page.getByLabel("Nom du locataire"),
       page.getByLabel("Adresse e-mail du locataire"),
+      page.getByLabel("Mon locataire a accepté de recevoir ses quittances de loyer par e-mail."),
       page.getByLabel("Loyer hors charges"),
       page.getByLabel("Charges", { exact: true }),
       page.getByLabel("Jour d'échéance"),

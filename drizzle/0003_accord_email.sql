@@ -1,0 +1,1 @@
+ALTER TABLE "rental" ADD COLUMN "email_consent_at" timestamp with time zone;

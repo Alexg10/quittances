@@ -173,7 +173,17 @@ export default async function RentalPage({
             </DetailRow>
           </DetailGroup>
 
-          <DetailGroup title="Le locataire">
+          <DetailGroup
+            title="Le locataire"
+            // Une phrase d'un seul tenant, visible aussi sur une location
+            // archivée (R2 de la spécification 05). Le jour est celui de
+            // Paris, comme la date d'archivage.
+            footer={`Accord pour l'envoi par e-mail : ${
+              rental.emailConsentAt === null
+                ? "non donné"
+                : `donné le ${formatArchiveDate(rental.emailConsentAt)}`
+            }`}
+          >
             <DetailRow label="Nom">{rental.tenantName}</DetailRow>
             <DetailRow label="Adresse e-mail">{rental.tenantEmail}</DetailRow>
           </DetailGroup>
@@ -255,15 +265,18 @@ export default async function RentalPage({
 
 type DetailGroupProps = {
   title: string;
+  // Phrase facultative sous la liste.
+  footer?: string;
   children: ReactNode;
 };
 
 // Un groupe d'informations : son nom, puis une liste de description (R41).
-function DetailGroup({ title, children }: DetailGroupProps) {
+function DetailGroup({ title, footer, children }: DetailGroupProps) {
   return (
     <section className="flex flex-col gap-4">
       <h2 className="font-display text-body font-bold">{title}</h2>
       <dl className="flex flex-col gap-4">{children}</dl>
+      {footer ? <p>{footer}</p> : null}
     </section>
   );
 }

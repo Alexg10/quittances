@@ -1,13 +1,13 @@
-// Les trois groupes et les dix champs du formulaire de location, dans l'ordre de
+// Les trois groupes et les onze champs du formulaire de location, dans l'ordre de
 // R33 de la spécification 03 : libellés, types de clavier et textes d'aide. Des
-// données plutôt que du balisage répété dix fois. Fichier pur.
+// données plutôt que du balisage répété onze fois. Fichier pur.
 import { DUE_DAY_HELP_TEXT } from "./rental-due-day";
 import type { RentalFormField } from "./rental-validation";
 
 export type RentalFormFieldSpec = {
   name: RentalFormField;
   label: string;
-  type: "text" | "email" | "date";
+  type: "text" | "email" | "date" | "checkbox";
   inputMode?: "numeric" | "decimal";
   hint?: string;
   required: boolean;
@@ -54,8 +54,16 @@ export const RENTAL_FORM_GROUPS: RentalFormGroupSpec[] = [
         name: "tenantEmail",
         label: "Adresse e-mail du locataire",
         type: "email",
-        hint: "Aucun e-mail n'est envoyé au locataire pour l'instant.",
+        hint: "Utilisée pour envoyer les quittances, si le locataire a donné son accord ci-dessous.",
         required: true,
+      },
+      // Case facultative (R1 de la spécification 05).
+      {
+        name: "emailConsent",
+        label: "Mon locataire a accepté de recevoir ses quittances de loyer par e-mail.",
+        type: "checkbox",
+        hint: "Vous attestez avoir recueilli cet accord. Sans lui, la quittance ne peut pas être envoyée par e-mail ; elle reste téléchargeable.",
+        required: false,
       },
     ],
   },

@@ -84,7 +84,7 @@ export default async function UpdateRentalPage({
           action={action}
           // Valeurs de départ : celles de la base, dans la forme des champs
           // (« 1250,50 », « 2026-01-05 »). La date de fin n'en fait pas partie.
-          initialState={{ fields: toRentalFormFields(rental), errors: {} }}
+          initialState={{ fields: toRentalFormFields(rental, rental.emailConsentAt !== null), errors: {} }}
           cancelHref={`/locations/${rental.id}`}
         />
       </main>

@@ -11,7 +11,7 @@ import {
   type RentalFormFields,
 } from "./rental-validation";
 
-// Les dix champs de l'exemple de CA23.
+// Les onze champs de l'exemple de CA23.
 const SAISIE_CA23: RentalFormFields = {
   address: "  12  rue des Lilas ",
   addressComplement: "Bât. B",
@@ -19,6 +19,7 @@ const SAISIE_CA23: RentalFormFields = {
   city: " Lyon ",
   tenantName: " Paul   Martin ",
   tenantEmail: " Paul.Martin-x1@Quittances.test ",
+  emailConsent: "",
   rent: "1 250,50 €",
   charges: "0",
   dueDay: "05",
@@ -45,6 +46,7 @@ const VIDE: RentalFormFields = {
   city: "",
   tenantName: "",
   tenantEmail: "",
+  emailConsent: "",
   rent: "",
   charges: "",
   dueDay: "",
@@ -62,7 +64,7 @@ function formulaire(champs: Record<string, string | File | Array<string | File>>
 }
 
 describe("RENTAL_FORM_FIELDS (R33)", () => {
-  it("liste les dix champs dans l'ordre du formulaire", () => {
+  it("liste les onze champs dans l'ordre du formulaire", () => {
     expect([...RENTAL_FORM_FIELDS]).toEqual([
       "address",
       "addressComplement",
@@ -70,6 +72,7 @@ describe("RENTAL_FORM_FIELDS (R33)", () => {
       "city",
       "tenantName",
       "tenantEmail",
+      "emailConsent",
       "rent",
       "charges",
       "dueDay",
@@ -80,7 +83,11 @@ describe("RENTAL_FORM_FIELDS (R33)", () => {
 
 describe("validateRentalForm — formulaire valide", () => {
   it("CA23 — rend les valeurs normalisées exactes", () => {
-    expect(validateRentalForm(SAISIE_CA23)).toEqual({ ok: true, values: VALEURS_CA23 });
+    expect(validateRentalForm(SAISIE_CA23)).toEqual({
+      ok: true,
+      values: VALEURS_CA23,
+      emailConsent: false,
+    });
   });
 
   it("R1 — un complément d'adresse vide est absent (null)", () => {
@@ -88,6 +95,7 @@ describe("validateRentalForm — formulaire valide", () => {
     expect(resultat).toEqual({
       ok: true,
       values: { ...VALEURS_CA23, addressComplement: null },
+      emailConsent: false,
     });
   });
 
@@ -344,7 +352,7 @@ describe("validateRentalForm — cohérence avec la date de fin existante (R22)"
 });
 
 describe("readRentalFormFields (R7)", () => {
-  it("lit les dix champs tels que saisis, sans les modifier", () => {
+  it("lit les onze champs tels que saisis, sans les modifier", () => {
     const champs = readRentalFormFields(formulaire({ ...SAISIE_CA23 }));
     expect(champs).toEqual(SAISIE_CA23);
   });
@@ -392,10 +400,14 @@ describe("readRentalFormFields (R7)", () => {
       formulaire({ ...SAISIE_CA23, ownerId: "owner-de-A", endDate: "2026-06-30", id: "x" }),
     );
     const resultat = validateRentalForm(champs);
-    expect(resultat).toEqual({ ok: true, values: VALEURS_CA23 });
+    expect(resultat).toEqual({
+      ok: true,
+      values: VALEURS_CA23,
+      emailConsent: false,
+    });
   });
 
-  it("un formulaire sans aucun champ donne dix chaînes vides", () => {
+  it("un formulaire sans aucun champ donne onze chaînes vides", () => {
     const champs = readRentalFormFields(new FormData());
     expect(champs).toEqual(VIDE);
   });
@@ -459,13 +471,14 @@ describe("toRentalFormFields (R16, R32)", () => {
   };
 
   it("CA32 — formate les montants en 1250,50 et 0,00, le jour en nombre, la date telle quelle", () => {
-    expect(toRentalFormFields(enregistree)).toEqual({
+    expect(toRentalFormFields(enregistree, false)).toEqual({
       address: "12 rue des Lilas",
       addressComplement: "",
       postalCode: "69003",
       city: "Lyon",
       tenantName: "Paul Martin",
       tenantEmail: "paul.martin-x1@quittances.test",
+      emailConsent: "",
       rent: "1250,50",
       charges: "0,00",
       dueDay: "5",
@@ -474,7 +487,7 @@ describe("toRentalFormFields (R16, R32)", () => {
   });
 
   it("un complément d'adresse présent est repris tel quel", () => {
-    expect(toRentalFormFields(VALEURS_CA23).addressComplement).toBe("Bât. B");
+    expect(toRentalFormFields(VALEURS_CA23, false).addressComplement).toBe("Bât. B");
   });
 
   it.each([
@@ -485,6 +498,10 @@ describe("toRentalFormFields (R16, R32)", () => {
     ["jour 31", { ...VALEURS_CA23, dueDay: 31 }],
     ["début à la borne basse", { ...VALEURS_CA23, startDate: "1950-01-01" }],
   ])("CA32 — toRentalFormFields puis validateRentalForm redonne les mêmes valeurs (%s)", (_cas, valeurs) => {
-    expect(validateRentalForm(toRentalFormFields(valeurs))).toEqual({ ok: true, values: valeurs });
+    expect(validateRentalForm(toRentalFormFields(valeurs, false))).toEqual({
+      ok: true,
+      values: valeurs,
+      emailConsent: false,
+    });
   });
 });

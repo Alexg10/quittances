@@ -11,11 +11,14 @@ type CheckboxFieldProps = {
   error?: string;
   hint?: string;
   required?: boolean;
+  // État de départ. Absent : décochée. Case non contrôlée, comme les champs de
+  // texte du formulaire de location (defaultValue).
+  defaultChecked?: boolean;
 };
 
-// La case n'a volontairement ni `checked` ni `defaultChecked` : elle n'est
-// jamais cochée d'avance, et revient décochée chaque fois que le formulaire est
-// réaffiché. Sans attribut `value`, une case cochée envoie « on » ; décochée,
+// La case n'est jamais cochée d'avance : sans `defaultChecked`, elle est
+// décochée. Un formulaire qui doit la restituer cochée (modification d'une
+// location, réaffichage après une erreur) le demande explicitement. Sans attribut `value`, une case cochée envoie « on » ; décochée,
 // elle n'envoie rien.
 export function CheckboxField({
   id,
@@ -24,6 +27,7 @@ export function CheckboxField({
   error,
   hint,
   required,
+  defaultChecked,
 }: CheckboxFieldProps) {
   const errorId = `${id}-erreur`;
   const hintId = `${id}-aide`;
@@ -40,6 +44,7 @@ export function CheckboxField({
           id={id}
           name={name}
           required={required}
+          defaultChecked={defaultChecked}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy || undefined}
           // size-5 : 20px. accent-primary : case indigo et coche blanche une

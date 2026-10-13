@@ -59,7 +59,7 @@ Périmètre de la fonctionnalité 05 (branche `envoi-emails`) : envoi **manuel**
 
 Spécification `docs/specs/05-envoi-des-quittances-par-e-mail.md` rédigée (28 règles, 34 critères, 3 tâches en `sonnet`, chacune avec une liste « à vérifier à la main »). L'utilisateur a confirmé la case d'accord dans le formulaire de location. Recommandations appliquées par défaut, qu'il n'a pas encore tranchées (elles concernent T2 et T3) : adresse de réponse = adresse du compte du propriétaire ; pas de copie au propriétaire ; suppression d'une quittance envoyée permise, avec une phrase d'avertissement.
 
-Étape en cours : **T1** (case d'accord du locataire) chez `developpeur-front` en `sonnet`. Tests existants rendus faux par T1 et T3 : corrigés par lecture, à lancer par l'utilisateur avant la fusion.
+**T1 développée et commitée** (case d'accord du locataire) : migration `drizzle/0003_accord_email.sql` (colonne `rental.email_consent_at`, appliquée aux deux bases), règle pure `src/rentals/rental-email-consent.ts`, date calculée sous le verrou de la location. Lint et build verts ; **aucun test lancé, rien vérifié dans un navigateur**. Étape en cours : vérification à la main par l'utilisateur, puis **T2** (module d'envoi, transport local, gabarit, fonction d'envoi). Tests existants rendus faux par T1 et T3 : corrigés par lecture, à lancer par l'utilisateur avant la fusion.
 
 Cette fonctionnalité débloque aussi la réinitialisation du mot de passe et la vérification de l'adresse du propriétaire.
 

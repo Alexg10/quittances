@@ -28,6 +28,7 @@ function rental(
     createdAt: new Date(createdAt),
     updatedAt: new Date(createdAt),
     archivedAt: null,
+    emailConsentAt: null,
   };
 }
 

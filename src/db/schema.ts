@@ -173,6 +173,11 @@ export const rental = pgTable(
     // est active. Renseigné par le système, jamais par un formulaire. Archiver
     // et restaurer ne touchent pas à updated_at : ranger n'est pas modifier.
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    // Instant où le propriétaire a attesté l'accord du locataire pour recevoir
+    // ses quittances par e-mail (R1 et R2 de la spécification 05). NULL : aucun
+    // accord attesté. Calculé par le store à partir de la case du formulaire,
+    // jamais lu dans une requête.
+    emailConsentAt: timestamp("email_consent_at", { withTimezone: true }),
   },
   (table) => [
     // La liste d'un propriétaire filtre sur owner_id et trie par created_at :

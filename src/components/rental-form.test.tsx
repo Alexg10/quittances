@@ -9,7 +9,9 @@ import {
 
 import { RentalForm } from "./rental-form";
 
-// Les dix champs de R33, dans l'ordre, avec les valeurs de la spécification.
+// Les dix champs de saisie de R33, dans l'ordre, avec les valeurs de la
+// spécification. La case d'accord (R1 de la spécification 05) est à part : voir
+// ALL_NAMES et les tests « case d'accord ».
 const FIELDS = [
   { name: "address", label: "Adresse", type: "text", inputmode: null, required: true, hint: null },
   {
@@ -36,7 +38,7 @@ const FIELDS = [
     type: "email",
     inputmode: null,
     required: true,
-    hint: "Aucun e-mail n'est envoyé au locataire pour l'instant.",
+    hint: "Utilisée pour envoyer les quittances, si le locataire a donné son accord ci-dessous.",
   },
   {
     name: "rent",
@@ -65,6 +67,14 @@ const FIELDS = [
   { name: "startDate", label: "Date de début du bail", type: "date", inputmode: null, required: true, hint: null },
 ] as const;
 
+// Les onze champs dans l'ordre du formulaire : la case d'accord suit l'adresse
+// e-mail (spécification 05, R1).
+const ALL_NAMES = [
+  ...FIELDS.slice(0, 6).map((f) => f.name),
+  "emailConsent",
+  ...FIELDS.slice(6).map((f) => f.name),
+];
+
 const FILLED: RentalFormState = {
   fields: {
     address: "12 rue des Lilas",
@@ -73,6 +83,7 @@ const FILLED: RentalFormState = {
     city: "Lyon",
     tenantName: "Marie Durand",
     tenantEmail: "marie@quittances.test",
+    emailConsent: "",
     rent: "850,00",
     charges: "1250,50",
     dueDay: "5",
@@ -126,11 +137,11 @@ describe("RentalForm — structure (R33, CA21)", () => {
     expect(loyer.getByLabelText("Charges")).toBeInTheDocument();
   });
 
-  it("CA21 — exactement dix champs de saisie, dans l'ordre de R33", () => {
+  it("CA21 — exactement onze champs, dans l'ordre de R33", () => {
     const { form } = setup();
 
     const names = [...form.querySelectorAll("input")].map((i) => i.getAttribute("name"));
-    expect(names).toEqual(FIELDS.map((f) => f.name));
+    expect(names).toEqual(ALL_NAMES);
   });
 
   it.each(FIELDS)(
@@ -205,7 +216,7 @@ describe("RentalForm — structure (R33, CA21)", () => {
     const { form } = setup({ state: FILLED });
 
     expect(form.querySelectorAll('input[type="hidden"]')).toHaveLength(0);
-    expect(form.querySelectorAll("[name]")).toHaveLength(10);
+    expect(form.querySelectorAll("[name]")).toHaveLength(11);
   });
 
   it("R4 — l'identifiant d'une location ne figure nulle part dans le formulaire", () => {
@@ -241,19 +252,19 @@ describe("RentalForm — état initial (CA21, R33)", () => {
     expect(field(spec.label)).toHaveValue("");
   });
 
-  it("R33 — l'ordre de tabulation : dix champs, le bouton d'envoi, puis Annuler", async () => {
+  it("R33 — l'ordre de tabulation : onze champs, le bouton d'envoi, puis Annuler", async () => {
     setup();
     const user = userEvent.setup();
 
     const ordre: string[] = [];
-    for (let i = 0; i < 12; i += 1) {
+    for (let i = 0; i < 13; i += 1) {
       await user.tab();
       const el = document.activeElement as HTMLElement;
       ordre.push(el.getAttribute("name") ?? el.textContent ?? "");
     }
 
     expect(ordre).toEqual([
-      ...FIELDS.map((f) => f.name),
+      ...ALL_NAMES,
       "Ajouter la location",
       "Annuler",
     ]);
@@ -328,7 +339,9 @@ describe("RentalForm — erreurs de champ (R34, CA21)", () => {
     });
 
     const erreur = screen.getByText("Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.");
-    const aide = screen.getByText("Aucun e-mail n'est envoyé au locataire pour l'instant.");
+    const aide = screen.getByText(
+      "Utilisée pour envoyer les quittances, si le locataire a donné son accord ci-dessous.",
+    );
     expect(erreur.compareDocumentPosition(aide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

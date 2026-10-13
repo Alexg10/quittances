@@ -135,7 +135,12 @@ export async function updateRentalAction(
 
   // 4. L'écriture. Le dernier enregistrement l'emporte (R26).
   const written = await writeRental("Modification de location", () =>
-    updateRental(owner, rental.id, validation.values),
+    updateRental(owner, rental.id, validation.values, {
+      given: validation.emailConsent,
+      // L'horloge du serveur : jamais une date venue du navigateur (R1 de la
+      // spécification 05). La comparaison d'adresse se fait dans le store.
+      now: new Date(),
+    }),
   );
   if (written === "unavailable") {
     return { fields, errors: {}, formError: ERROR_MESSAGES.E8 };

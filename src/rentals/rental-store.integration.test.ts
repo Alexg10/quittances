@@ -147,6 +147,8 @@ describe("CA2 — créer, relire, lister", () => {
       updatedAt: expect.any(Date),
       // Spécification 04, R42 : une location créée est active.
       archivedAt: null,
+      // Spécification 05, R1 : sans accord attesté, la date d'accord est absente.
+      emailConsentAt: null,
     });
     // Montants en centimes entiers, date rendue telle quelle, sans fuseau.
     expect(read?.rentInCents).toBe(125050);

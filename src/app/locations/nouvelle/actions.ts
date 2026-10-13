@@ -28,7 +28,7 @@ export async function createRentalAction(
   previousState: RentalFormState,
   formData: FormData,
 ): Promise<RentalFormState> {
-  // Seuls les dix champs du formulaire sont lus. Tout autre champ de la requête
+  // Seuls les onze champs du formulaire sont lus. Tout autre champ de la requête
   // (identifiant de propriétaire, identifiant de location, date de fin) n'est
   // jamais regardé (R7).
   const fields = readRentalFormFields(formData);
@@ -61,7 +61,12 @@ export async function createRentalAction(
   // 3. L'écriture, pour ce propriétaire.
   let result: CreateRentalResult;
   try {
-    result = await createRental(owner, validation.values);
+    result = await createRental(owner, validation.values, {
+      given: validation.emailConsent,
+      // L'horloge du serveur : jamais une date venue du navigateur (R1 de la
+      // spécification 05).
+      now: new Date(),
+    });
   } catch (error) {
     if (error instanceof RentalStoreError) {
       console.error("Création de location : écriture impossible", error.name);

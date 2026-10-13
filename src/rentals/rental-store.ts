@@ -49,6 +49,7 @@ import { requireInstant } from "../db/require-instant";
 import { requireOwnerId } from "../db/require-owner-id";
 import { receipt, rental } from "../db/schema";
 import { getTodayInParis } from "./rental-dates";
+import { resolveEmailConsentAt } from "./rental-email-consent";
 import { isRentalId } from "./rental-id";
 
 // R9 : un compte a au plus 100 locations, en cours, terminées et archivées
@@ -87,12 +88,23 @@ export type Rental = RentalValues & {
   // Instant de l'archivage, ou null tant que la location est active (R39 de la
   // spécification 04).
   archivedAt: Date | null;
+  // Instant où le propriétaire a attesté l'accord du locataire pour l'envoi par
+  // e-mail, ou null s'il n'y en a pas (R1 de la spécification 05).
+  emailConsentAt: Date | null;
 };
 
 // Une ligne de la page « Archives » (R41 de la spécification 04).
 export type ArchivedRental = Rental & {
   archivedAt: Date;
   receiptCount: number;
+};
+
+// Ce que l'action sait de l'accord du locataire (R1 de la spécification 05) :
+// la case du formulaire, et l'instant de la demande lu sur l'horloge du
+// serveur. La date enregistrée est calculée ici, sous le verrou.
+export type EmailConsentInput = {
+  given: boolean;
+  now: Date;
 };
 
 export type CreateRentalResult =
@@ -145,6 +157,7 @@ const rentalColumns = {
   createdAt: rental.createdAt,
   updatedAt: rental.updatedAt,
   archivedAt: rental.archivedAt,
+  emailConsentAt: rental.emailConsentAt,
 };
 
 // Crée une location pour `owner`. Le propriétaire de la ligne vient de cet
@@ -163,8 +176,19 @@ const rentalColumns = {
 export async function createRental(
   owner: Owner,
   values: RentalValues,
+  // Absent : aucun accord (la case est facultative, R1 de la spécification 05).
+  consent?: EmailConsentInput,
 ): Promise<CreateRentalResult> {
   const ownerId = requireOwnerId(owner);
+  const pickedValues = pickValues(values);
+  const emailConsentAt =
+    consent === undefined
+      ? null
+      : resolveEmailConsentAt({
+          given: consent.given,
+          now: requireInstant(consent.now),
+          tenantEmail: pickedValues.tenantEmail,
+        });
 
   return runWrite("créer", async (tx) => {
     const [{ total }] = await tx
@@ -179,7 +203,7 @@ export async function createRental(
       .insert(rental)
       // Les champs sont recopiés un par un : un champ en trop dans `values`
       // (un identifiant, une date de fin) ne peut pas atteindre la base.
-      .values({ ownerId, ...pickValues(values) })
+      .values({ ownerId, ...pickedValues, emailConsentAt })
       .returning(rentalColumns);
     return { status: "created", rental: created };
   });
@@ -257,14 +281,36 @@ export async function getRental(
 }
 
 // Remplace les dix informations saisies. Ne touche jamais la date de fin (R22).
-// Le dernier enregistrement l'emporte (R26) : aucune comparaison avec l'état
-// précédent. Une location archivée ne se modifie pas : "not-applicable".
+// Le dernier enregistrement l'emporte (R26). Une location archivée ne se
+// modifie pas : "not-applicable".
+//
+// La date d'accord (R1, R2 de la spécification 05) est calculée dans la même
+// écriture, sur la ligne verrouillée : l'adresse précédente est celle de la
+// base à cet instant, jamais celle qu'une page avait lue. Sans `consent`,
+// l'accord n'est pas touché.
 export async function updateRental(
   owner: Owner,
   rentalId: string,
   values: RentalValues,
+  consent?: EmailConsentInput,
 ): Promise<UpdateRentalResult> {
-  return updateActiveRental("modifier", owner, rentalId, pickValues(values));
+  const pickedValues = pickValues(values);
+  const now = consent === undefined ? null : requireInstant(consent.now);
+
+  return updateActiveRental("modifier", owner, rentalId, (current) => {
+    if (consent === undefined || now === null) {
+      return pickedValues;
+    }
+    return {
+      ...pickedValues,
+      emailConsentAt: resolveEmailConsentAt({
+        given: consent.given,
+        now,
+        previous: current,
+        tenantEmail: pickedValues.tenantEmail,
+      }),
+    };
+  });
 }
 
 // Fixe ou remplace la date de fin, et ne touche qu'elle (R21).
@@ -274,7 +320,9 @@ export async function setRentalEndDate(
   rentalId: string,
   endDate: string,
 ): Promise<UpdateRentalResult> {
-  return updateActiveRental("fixer la date de fin", owner, rentalId, { endDate });
+  return updateActiveRental("fixer la date de fin", owner, rentalId, () => ({
+    endDate,
+  }));
 }
 
 // Retire la date de fin. Rouvrir une location active qui n'en a pas réussit
@@ -283,7 +331,9 @@ export async function reopenRental(
   owner: Owner,
   rentalId: string,
 ): Promise<UpdateRentalResult> {
-  return updateActiveRental("rouvrir", owner, rentalId, { endDate: null });
+  return updateActiveRental("rouvrir", owner, rentalId, () => ({
+    endDate: null,
+  }));
 }
 
 // Archive une location (R39, R40 de la spécification 04). Seule une location
@@ -459,16 +509,22 @@ export async function lockRentalForWrite(
   return rows[0] ?? null;
 }
 
+type RentalChanges = Partial<RentalValues> & {
+  endDate?: string | null;
+  emailConsentAt?: Date | null;
+};
+
 // Les trois modifications partagent cette fonction. On ne décide rien d'après
 // une lecture faite avant : la ligne est verrouillée, puis un seul UPDATE porte
 // dans son WHERE l'identifiant, le propriétaire ET l'état « active ». On
-// regarde ensuite combien de lignes ont été touchées. Zéro ligne alors que la
+// regarde ensuite combien de lignes ont été touchées. `buildChanges` reçoit
+// l'état verrouillé : c'est lui qui permet de décider d'après la base. Zéro ligne alors que la
 // location existe : elle est archivée, rien n'a été écrit.
 async function updateActiveRental(
   operation: string,
   owner: Owner,
   rentalId: string,
-  changes: Partial<RentalValues> & { endDate?: string | null },
+  buildChanges: (current: Rental) => RentalChanges,
 ): Promise<UpdateRentalResult> {
   const ownerId = requireOwnerId(owner);
   if (!isRentalId(rentalId)) {
@@ -476,13 +532,14 @@ async function updateActiveRental(
   }
 
   return runWrite(operation, async (tx) => {
-    if ((await lockRentalForWrite(tx, ownerId, rentalId)) === null) {
+    const current = await lockRentalForWrite(tx, ownerId, rentalId);
+    if (current === null) {
       return "not-found";
     }
     const updatedRows = await tx
       .update(rental)
       // now() : l'horloge de la base, comme pour created_at.
-      .set({ ...changes, updatedAt: sql`now()` })
+      .set({ ...buildChanges(current), updatedAt: sql`now()` })
       .where(and(ownedRental(ownerId, rentalId), isNull(rental.archivedAt)))
       .returning({ id: rental.id });
     return updatedRows.length === 1 ? "updated" : "not-applicable";
