@@ -50,8 +50,16 @@ Dernière mise à jour : 2026-10-10
 
 Cinquième fonctionnalité : **envoi d'e-mails** (la quittance part au locataire en pièce jointe). Deux choses à expliquer puis décider, une à la fois, avant la spécification :
 
-1. Le choix du **service d'envoi** (API transactionnelle ou SMTP, délivrabilité : SPF, DKIM, DMARC, domaine d'expédition, environnement de test sans envoi réel).
-2. L'**accord exprès du locataire** pour recevoir sa quittance par voie électronique, à enregistrer par location (reporté de la fonctionnalité 04).
+1. Le choix du **service d'envoi** : **décidé le 2026-10-13**. L'utilisateur n'a pas encore de nom de domaine : on développe d'abord **en mode test, sans service tiers** (un seul module d'envoi, avec un transport local qui n'envoie rien de réel) ; le service retenu pour la suite est **Resend** (avec React Email pour les gabarits), à brancher quand un domaine d'expédition existera (SPF, DKIM, DMARC). Le domaine devient un point à régler avant ouverture au public.
+2. L'**accord exprès du locataire** : **décidé le 2026-10-13**, option A. Le propriétaire atteste l'accord par une case, par location, avec sa date ; sans accord, aucune quittance ne part par e-mail. La confirmation par le locataire lui-même (lien dans un e-mail) reste une évolution possible.
+
+Périmètre de la fonctionnalité 05 (branche `envoi-emails`) : envoi **manuel** d'une quittance produite. **Demande de l'utilisateur pour la fonctionnalité des échéances** : quand le propriétaire clique sur le bouton de l'e-mail du jour J, la quittance est produite et envoyée automatiquement. L'envoi doit donc être une fonction du domaine indépendante de l'interface. À traiter alors : un lien d'e-mail est un GET, que les messageries et antivirus suivent d'eux-mêmes ; il ne doit rien écrire sans une confirmation.
+
+**Économie de jetons, décidée par l'utilisateur le 2026-10-13** (limite hebdomadaire atteinte) : plus d'agents `createur-de-tests` ni `qa` ; **aucune suite de tests lancée** par l'orchestrateur ni par les agents ; avant une fusion dans `main`, l'orchestrateur donne les commandes et l'utilisateur les lance lui-même ; `sonnet` pour tous les agents, chef de projet compris ; spécifications compactes. Seuls `pnpm lint` et `pnpm build` sont encore lancés après une tâche.
+
+Spécification `docs/specs/05-envoi-des-quittances-par-e-mail.md` rédigée (28 règles, 34 critères, 3 tâches en `sonnet`, chacune avec une liste « à vérifier à la main »). L'utilisateur a confirmé la case d'accord dans le formulaire de location. Recommandations appliquées par défaut, qu'il n'a pas encore tranchées (elles concernent T2 et T3) : adresse de réponse = adresse du compte du propriétaire ; pas de copie au propriétaire ; suppression d'une quittance envoyée permise, avec une phrase d'avertissement.
+
+Étape en cours : **T1** (case d'accord du locataire) chez `developpeur-front` en `sonnet`. Tests existants rendus faux par T1 et T3 : corrigés par lecture, à lancer par l'utilisateur avant la fusion.
 
 Cette fonctionnalité débloque aussi la réinitialisation du mot de passe et la vérification de l'adresse du propriétaire.
 
