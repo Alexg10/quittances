@@ -53,6 +53,8 @@ Un test rouge ou un bug remonté par les étapes 3 et 4 repart chez le développ
 - `pnpm test:e2e` : tests Playwright dans `e2e/`, contre le build de production servi sur le port 3100 et la base de test (exige `DATABASE_URL_TEST`)
 - `pnpm db:generate` : génère une migration SQL dans `drizzle/` à partir de `src/db/schema.ts`
 - `pnpm db:migrate` : applique les migrations à la base de développement (`DATABASE_URL`)
+- `pnpm email:send <id-quittance>` : envoie une quittance par le transport local, pour le compte qui la possède (base de développement, refuse si `EMAIL_TRANSPORT` n'est pas `local`)
+- `pnpm email:export` : écrit les messages du transport local en fichiers `.eml` dans `.emails/` (ignoré par Git)
 - `pnpm db:migrate:test` : applique les migrations à la base de test (`DATABASE_URL_TEST`)
 
 Les variables d'environnement sont dans `.env.local` (jamais commité) et documentées dans `.env.example`. Les tests n'utilisent jamais la base de développement.

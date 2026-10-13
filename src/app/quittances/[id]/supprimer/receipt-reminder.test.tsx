@@ -26,6 +26,10 @@ const RECEIPT: Receipt = {
   paymentDate: "2026-10-03",
   issueDate: "2026-10-12",
   producedAt: new Date("2026-10-12T10:00:00Z"),
+  emailSendState: null,
+  emailSendStartedAt: null,
+  emailSentAt: null,
+  emailSentTo: null,
 };
 
 // Ramène toute espace (insécable comprise) à une espace ordinaire.

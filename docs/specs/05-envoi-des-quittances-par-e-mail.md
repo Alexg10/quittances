@@ -2,6 +2,8 @@
 
 > **Avertissement de droit.** Je ne peux pas affirmer le droit locatif. L'accord du locataire (R1) repose sur l'article 21 de la loi du 6 juillet 1989, lu sur des fiches pratiques seulement. Le point est en Q1, à faire vérifier avant une ouverture au public. Cette spécification ne dit rien de la valeur juridique d'un PDF envoyé par e-mail.
 
+> **Précisions après T2 (2026-10-13).** (1) R23 : `@react-email/components` est déclaré abandonné sur npm et son rendu écrit un DOCTYPE contenant `http://` ; `react-dom/server` est refusé par le build de Next depuis le code serveur. Le gabarit est donc, pour l'instant, une fonction pure qui construit le HTML (tableau, styles en ligne, tout échappé) à partir du même objet de contenu que le texte. Le paquet `react-email` (version 6) n'a pas été essayé : à reprendre avec Resend si l'utilisateur le souhaite. (2) R15 : quatre colonnes sur la quittance, pas trois (état, début du dernier envoi, date et adresse du dernier envoi réussi). (3) Le temps 2 de R6 réutilise les valeurs figées lues sous verrou au temps 1. (4) Si le transport dépasse son délai, le résultat est `échec-transport` mais le transport local peut avoir rangé le message quand même.
+
 ## Objectif
 
 Le propriétaire envoie en un geste une quittance déjà produite à son locataire, en pièce jointe d'un e-mail, au lieu de la télécharger et de la transmettre lui-même. L'envoi n'est possible que si le propriétaire atteste que le locataire accepte de recevoir ses quittances par voie électronique. La quittance garde la trace de l'envoi.

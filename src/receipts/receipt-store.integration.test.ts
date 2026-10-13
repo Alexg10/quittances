@@ -145,6 +145,10 @@ describe("CA3 — produire, relire, lister ; les valeurs figées ne changent plu
       paymentDate: "2026-01-20",
       issueDate: "2026-11-01",
       producedAt: new Date("2026-10-31T23:30:00Z"),
+      emailSendState: null,
+      emailSendStartedAt: null,
+      emailSentAt: null,
+      emailSentTo: null,
     };
     expect(produced).toEqual(expected);
 

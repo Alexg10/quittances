@@ -11,6 +11,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  customType,
   date,
   foreignKey,
   index,
@@ -297,7 +298,10 @@ export const landlord = pgTable(
 // Une quittance (R6 de la spécification 04). Elle porte une COPIE de tout ce
 // qu'elle affiche : nom et adresse du bailleur, nom du locataire, adresse du
 // logement, montants, dates. Rien n'est relu ensuite dans `rental` ni dans
-// `landlord`, et aucune opération ne modifie une ligne de cette table.
+// `landlord`, et ces valeurs ne changent jamais. Seules les quatre colonnes
+// d'envoi par e-mail (`email_send_*` et `email_sent_*`, R15 de la spécification
+// 05) sont modifiables, et uniquement par les fonctions d'envoi de
+// src/receipts/receipt-store.ts (réserver, enregistrer).
 // Seul module autorisé à l'interroger : src/receipts/receipt-store.ts (et la
 // suppression définitive d'une location, dans src/rentals/rental-store.ts).
 //
@@ -352,6 +356,17 @@ export const receipt = pgTable(
     producedAt: timestamp("produced_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // Trace de l'envoi par e-mail (R15 de la spécification 05). Quatre colonnes
+    // nullables : une quittance jamais envoyée les a toutes à NULL.
+    // - l'état du dernier envoi : NULL (aucun envoi en cours ni échoué), « sending »
+    //   (en cours) ou « failed » (échec) ;
+    // - l'instant de début du dernier envoi, présent si et seulement si l'état l'est ;
+    // - la date et l'adresse du dernier envoi RÉUSSI, ensemble. Un renvoi qui
+    //   échoue ne les efface pas (R11).
+    emailSendState: text("email_send_state", { enum: ["sending", "failed"] }),
+    emailSendStartedAt: timestamp("email_send_started_at", { withTimezone: true }),
+    emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
+    emailSentTo: text("email_sent_to"),
   },
   (table) => [
     // La clé étrangère vers la location porte sur le couple (location,
@@ -368,6 +383,10 @@ export const receipt = pgTable(
     // productions simultanées du même mois en créent exactement une. L'index
     // de cette unicité sert aussi à lister les quittances d'une location.
     unique("receipt_rental_id_month_unique").on(table.rentalId, table.month),
+    // Aucune ligne de plus n'est interdite (id est déjà la clé primaire). Cette
+    // unicité permet à `local_email` de référencer le couple (quittance,
+    // propriétaire), comme `receipt` référence (location, propriétaire).
+    unique("receipt_id_owner_id_unique").on(table.id, table.ownerId),
     // Pour retrouver les quittances d'un compte qu'on supprime (cascade).
     index("receipt_owner_id_idx").on(table.ownerId),
     check(
@@ -443,6 +462,92 @@ export const receipt = pgTable(
     check(
       "receipt_rental_city_length",
       sql`char_length(${table.rentalCity}) between 1 and 100`,
+    ),
+    // Cohérence de la trace d'envoi (R15 de la spécification 05).
+    // « is null or … » : sans lui, un état absent donnerait NULL au test, et un
+    // CHECK laisse passer NULL.
+    check(
+      "receipt_email_send_state_values",
+      sql`${table.emailSendState} is null or ${table.emailSendState} in ('sending', 'failed')`,
+    ),
+    // Un état sans instant de début, ou l'inverse, n'a pas de sens.
+    check(
+      "receipt_email_send_state_with_start",
+      sql`(${table.emailSendState} is null) = (${table.emailSendStartedAt} is null)`,
+    ),
+    // La date et l'adresse du dernier envoi réussi vont ensemble.
+    check(
+      "receipt_email_sent_at_with_address",
+      sql`(${table.emailSentAt} is null) = (${table.emailSentTo} is null)`,
+    ),
+    check(
+      "receipt_email_sent_to_length",
+      sql`char_length(${table.emailSentTo}) between 3 and 254`,
+    ),
+  ],
+);
+
+// Colonne d'octets (bytea) : Drizzle n'en propose pas de toute faite. Le pilote
+// `pg` rend un Buffer et en accepte un.
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
+
+// Les messages du transport LOCAL (R19 de la spécification 05) : il n'envoie
+// rien, il range le message ici. Table de développement, lue par la commande
+// qui écrit des fichiers .eml ; aucune page ne l'affiche.
+//
+// Les messages disparaissent avec la quittance ET avec le compte (ON DELETE
+// CASCADE sur les deux clés) : supprimer une quittance, une location archivée
+// ou un compte n'est jamais bloqué par cette table. La clé étrangère vers la
+// quittance porte sur le couple (quittance, propriétaire) : la base garantit
+// que le message a le même propriétaire que sa quittance.
+export const localEmail = pgTable(
+  "local_email",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    receiptId: uuid("receipt_id").notNull(),
+    // Le message tel que R17 le décrit.
+    recipient: text("recipient").notNull(),
+    senderAddress: text("sender_address").notNull(),
+    senderName: text("sender_name").notNull(),
+    replyToAddress: text("reply_to_address").notNull(),
+    replyToName: text("reply_to_name").notNull(),
+    subject: text("subject").notNull(),
+    htmlBody: text("html_body").notNull(),
+    textBody: text("text_body").notNull(),
+    attachmentFileName: text("attachment_file_name").notNull(),
+    attachmentContentType: text("attachment_content_type").notNull(),
+    attachmentContent: bytea("attachment_content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: "local_email_receipt_id_owner_id_receipt_fk",
+      columns: [table.receiptId, table.ownerId],
+      foreignColumns: [receipt.id, receipt.ownerId],
+    }).onDelete("cascade"),
+    index("local_email_receipt_id_idx").on(table.receiptId),
+    index("local_email_owner_id_idx").on(table.ownerId),
+    check(
+      "local_email_recipient_length",
+      sql`char_length(${table.recipient}) between 3 and 254`,
+    ),
+    // Un saut de ligne dans un en-tête en ajouterait un autre (R22).
+    check(
+      "local_email_headers_single_line",
+      sql`${table.subject} !~ '[\\r\\n]' and ${table.senderName} !~ '[\\r\\n]' and ${table.replyToName} !~ '[\\r\\n]'`,
+    ),
+    check(
+      "local_email_attachment_content_type",
+      sql`${table.attachmentContentType} = 'application/pdf'`,
     ),
   ],
 );

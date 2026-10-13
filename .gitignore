@@ -24,6 +24,9 @@
 # production
 /build
 
+# messages du transport local, écrits par `pnpm email:export`
+/.emails/
+
 # misc
 .DS_Store
 *.pem

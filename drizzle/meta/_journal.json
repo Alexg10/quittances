@@ -29,6 +29,13 @@
       "when": 1791911001027,
       "tag": "0003_accord_email",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791911438816,
+      "tag": "0004_envoi_email",
+      "breakpoints": true
     }
   ]
 }

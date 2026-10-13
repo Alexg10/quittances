@@ -41,6 +41,10 @@ const JANVIER: Receipt = {
   paymentDate: "2026-01-20",
   issueDate: "2026-10-12",
   producedAt: new Date("2026-10-12T10:00:00Z"),
+  emailSendState: null,
+  emailSendStartedAt: null,
+  emailSentAt: null,
+  emailSentTo: null,
 };
 
 // Mars : 850,00 € de loyer et 50,00 € de charges, soit 900,00 €.
