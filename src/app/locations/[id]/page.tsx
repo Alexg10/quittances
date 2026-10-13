@@ -230,7 +230,11 @@ export default async function RentalPage({
             {hasReceipts ? (
               // Archivée : les quittances restent téléchargeables, mais ne se
               // suppriment pas.
-              <ReceiptList receipts={receipts} canDelete={archivedAt === null} />
+              <ReceiptList
+                receipts={receipts}
+                now={now}
+                canDelete={archivedAt === null}
+              />
             ) : (
               <p className="text-text-secondary">
                 Aucune quittance pour cette location.

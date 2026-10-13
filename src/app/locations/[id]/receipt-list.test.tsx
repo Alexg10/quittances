@@ -62,8 +62,10 @@ const MARS: Receipt = {
 // Ramène toute espace (insécable, fine insécable comprise) à une espace ordinaire.
 const normaliser = (texte: string | null) => (texte ?? "").replace(/\s/g, " ");
 
+const NOW = new Date("2026-10-13T10:00:00Z");
+
 function setup(receipts: Receipt[]) {
-  return render(<ReceiptList receipts={receipts} />);
+  return render(<ReceiptList receipts={receipts} now={NOW} />);
 }
 
 const ligne = (index: number) => screen.getAllByRole("listitem")[index];
@@ -87,7 +89,7 @@ describe("ReceiptList — lignes (CA24, R16, R36)", () => {
     setup([JANVIER]);
 
     expect(normaliser(ligne(0).textContent)).toMatch(
-      /Janvier 2026.*Du 15\/01\/2026 au 31\/01\/2026.*425,50 € charges comprises.*Payé le 20\/01\/2026.*Référence 2026-01-3F9A1C2E.*Télécharger.*Supprimer/,
+      /Janvier 2026.*Du 15\/01\/2026 au 31\/01\/2026.*425,50 € charges comprises.*Payé le 20\/01\/2026.*Référence 2026-01-3F9A1C2E.*Non envoyée par e-mail\..*Télécharger.*Envoyer par e-mail.*Supprimer/,
     );
   });
 
@@ -204,17 +206,19 @@ describe("ReceiptList — liens (R34, R36, CA24, CA33)", () => {
     const noms = screen.getAllByRole("link").map((l) => l.getAttribute("aria-label"));
     expect(noms).toEqual([
       "Télécharger la quittance, mars 2026",
+      "Envoyer la quittance par e-mail, mars 2026",
       "Supprimer la quittance, mars 2026",
       "Télécharger la quittance, janvier 2026",
+      "Envoyer la quittance par e-mail, janvier 2026",
       "Supprimer la quittance, janvier 2026",
     ]);
     expect(new Set(noms).size).toBe(noms.length);
   });
 
-  it("R36 — le nom accessible commence par le texte visible du lien", () => {
+  it("R36 — le nom accessible commence par le texte visible du lien (sauf « Envoyer par e-mail », dont le nom est fixé par la spécification 05)", () => {
     setup([JANVIER]);
 
-    for (const lien of screen.getAllByRole("link")) {
+    for (const lien of screen.getAllByRole("link", { name: /^(Télécharger|Supprimer)/ })) {
       expect(lien.getAttribute("aria-label")).toMatch(new RegExp(`^${lien.textContent}`));
     }
   });
@@ -234,14 +238,14 @@ describe("ReceiptList — liens (R34, R36, CA24, CA33)", () => {
     setup([JANVIER]);
 
     for (const lien of screen.getAllByRole("link")) {
-      expect(lien.getAttribute("href")).toMatch(/^\/quittances\/[0-9a-f-]{36}\/(pdf|supprimer)$/);
+      expect(lien.getAttribute("href")).toMatch(/^\/quittances\/[0-9a-f-]{36}\/(pdf|envoyer|supprimer)$/);
     }
   });
 });
 
 describe("ReceiptList — canDelete={false}, location archivée (R39, CA50)", () => {
   it("CA50 — les liens Télécharger restent, aucun lien Supprimer", () => {
-    render(<ReceiptList receipts={[MARS, JANVIER]} canDelete={false} />);
+    render(<ReceiptList receipts={[MARS, JANVIER]} now={NOW} canDelete={false} />);
 
     expect(screen.getAllByRole("link").map((lien) => lien.getAttribute("href"))).toEqual([
       `/quittances/${ID_MARS}/pdf`,
@@ -251,15 +255,15 @@ describe("ReceiptList — canDelete={false}, location archivée (R39, CA50)", ()
   });
 
   it("CA50 — les lignes gardent leur contenu (mois, total, référence)", () => {
-    render(<ReceiptList receipts={[JANVIER]} canDelete={false} />);
+    render(<ReceiptList receipts={[JANVIER]} now={NOW} canDelete={false} />);
 
     const texte = normaliser(ligne(0).textContent);
     expect(texte).toMatch(/Janvier 2026.*425,50 € charges comprises.*Référence 2026-01-3F9A1C2E/);
   });
 
-  it("CA24 — canDelete={true} explicite : les deux liens par ligne", () => {
-    render(<ReceiptList receipts={[JANVIER]} canDelete />);
+  it("CA24 — canDelete={true} explicite : les trois liens par ligne", () => {
+    render(<ReceiptList receipts={[JANVIER]} now={NOW} canDelete />);
 
-    expect(within(ligne(0)).getAllByRole("link")).toHaveLength(2);
+    expect(within(ligne(0)).getAllByRole("link")).toHaveLength(3);
   });
 });

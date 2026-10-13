@@ -40,6 +40,12 @@ export default defineConfig({
       DATABASE_URL: testDatabaseUrl,
       // L'application est servie sur le port 3100 pendant les tests e2e.
       BETTER_AUTH_URL: baseURL,
+      // Envoi des quittances par e-mail (spécification 05) : le transport local
+      // n'envoie rien, il range les messages dans la base de test. Le build servi
+      // ici n'est pas un environnement de production réel (R20).
+      EMAIL_TRANSPORT: "local",
+      EMAIL_FROM_ADDRESS: "quittances@quittances.test",
+      REAL_PRODUCTION: "false",
     },
     // Jamais de serveur réutilisé : les tests écrivent en base, et un serveur
     // déjà lancé sur ce port pourrait être branché sur la base de développement.

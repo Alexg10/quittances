@@ -133,7 +133,7 @@ test.describe("Archivage : accessibilité, rendu, clavier", () => {
       ["/mes-informations", ["Quittances, tableau de bord", "Nom du bailleur", "Adresse", "Complément d'adresse (facultatif)", "Code postal", "Ville", "Enregistrer mes informations", "Annuler"]],
       [`/locations/${term.id}/quittances/nouvelle`, ["Quittances, tableau de bord", "Mois", "Loyer hors charges", "Charges", "Date du paiement", "Je confirme avoir reçu en totalité le loyer et les charges indiqués ci-dessus pour ce mois.", "Produire la quittance", "Annuler"]],
       [`/quittances/${q}/supprimer`, ["Quittances, tableau de bord", "Supprimer définitivement", "Annuler"]],
-      [`/locations/${term.id}`, ["Quittances, tableau de bord", "Retour au tableau de bord", "Produire une quittance", "Télécharger la quittance, janvier 2026", "Supprimer la quittance, janvier 2026", "Modifier", "Modifier la fin de la location", "Archiver"]],
+      [`/locations/${term.id}`, ["Quittances, tableau de bord", "Retour au tableau de bord", "Produire une quittance", "Télécharger la quittance, janvier 2026", "Envoyer la quittance par e-mail, janvier 2026", "Supprimer la quittance, janvier 2026", "Modifier", "Modifier la fin de la location", "Archiver"]],
       [`/locations/${term.id}/archiver`, ["Quittances, tableau de bord", "Archiver la location", "Annuler"]],
       ["/archives", ["Quittances, tableau de bord", "Retour au tableau de bord", archivee.valeurs.address]],
       [`/locations/${archivee.id}`, ["Quittances, tableau de bord", "Retour aux archives", "Télécharger la quittance, janvier 2026", "Restaurer la location", "Supprimer définitivement"]],

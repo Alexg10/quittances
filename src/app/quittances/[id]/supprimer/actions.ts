@@ -87,7 +87,7 @@ export async function deleteReceiptAction(
   // supprimée dans un autre onglet : l'écriture répond alors "not-found".
   let result: DeleteReceiptResult;
   try {
-    result = await deleteReceipt(owner, receipt.id);
+    result = await deleteReceipt(owner, receipt.id, new Date());
   } catch (error) {
     if (error instanceof ReceiptStoreError) {
       console.error("Suppression de quittance : écriture impossible", error.name);
@@ -97,6 +97,11 @@ export async function deleteReceiptAction(
   }
   if (result === "not-found") {
     notFound();
+  }
+  if (result === "sending-in-progress") {
+    // Un envoi par e-mail est en cours (R13 de la spécification 05) : rien n'est
+    // supprimé, le détail montre l'état réel.
+    redirect(`/locations/${receipt.rentalId}`);
   }
 
   // 4. Le navigateur garde en mémoire les pages déjà affichées : le détail de

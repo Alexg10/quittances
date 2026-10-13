@@ -14,6 +14,11 @@ import {
   formatMonthLabel,
 } from "@/receipts/receipt-months";
 import { getReceiptReference } from "@/receipts/receipt-reference";
+import { getReceiptSendingStatus } from "@/receipts/receipt-sending-state";
+import {
+  getSendingLink,
+  getSendingStatusLines,
+} from "@/receipts/receipt-sending-text";
 import type { Receipt } from "@/receipts/receipt-store";
 import { formatAmount, totalInCents } from "@/rentals/rental-amount";
 import { formatDate } from "@/rentals/rental-dates";
@@ -21,18 +26,36 @@ import { formatDate } from "@/rentals/rental-dates";
 type ReceiptListProps = {
   // Déjà triées par le magasin : mois le plus récent d'abord.
   receipts: Receipt[];
+  // L'instant présent, lu une fois sur le serveur par la page : il dit si un
+  // envoi est « en cours » ou « interrompu » (R9 de la spécification 05).
+  now: Date;
   // false pour une location archivée, en consultation seule (R39) : les lignes
   // gardent « Télécharger » et n'ont pas de lien « Supprimer ». Ce n'est qu'un
   // affichage : la page et l'action de suppression refusent elles-mêmes une
   // quittance dont la location est archivée.
   canDelete?: boolean;
+  // false pour une location archivée (R14 de la spécification 05) : la ligne
+  // d'état reste visible, le lien d'envoi disparaît. Suit `canDelete` par
+  // défaut : les deux dépendent de la même condition, location active.
+  canSend?: boolean;
 };
 
-export function ReceiptList({ receipts, canDelete = true }: ReceiptListProps) {
+export function ReceiptList({
+  receipts,
+  now,
+  canDelete = true,
+  canSend = canDelete,
+}: ReceiptListProps) {
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
       {receipts.map((receipt) => (
-        <ReceiptRow key={receipt.id} receipt={receipt} canDelete={canDelete} />
+        <ReceiptRow
+          key={receipt.id}
+          receipt={receipt}
+          now={now}
+          canDelete={canDelete}
+          canSend={canSend}
+        />
       ))}
     </ul>
   );
@@ -40,12 +63,18 @@ export function ReceiptList({ receipts, canDelete = true }: ReceiptListProps) {
 
 type ReceiptRowProps = {
   receipt: Receipt;
+  now: Date;
   canDelete: boolean;
+  canSend: boolean;
 };
 
-function ReceiptRow({ receipt, canDelete }: ReceiptRowProps) {
+function ReceiptRow({ receipt, now, canDelete, canSend }: ReceiptRowProps) {
   // « octobre 2026 » : distingue les liens de même texte d'une ligne à l'autre.
   const monthInSentence = formatMonthInSentence(receipt.month);
+  // État d'envoi (R9, R15 de la spécification 05) et lien qui en découle.
+  const sendingLink = canSend
+    ? getSendingLink(getReceiptSendingStatus(receipt, now), receipt.month)
+    : null;
 
   return (
     // En dessous de 768px les informations s'empilent ; au-delà, deux colonnes.
@@ -75,6 +104,12 @@ function ReceiptRow({ receipt, canDelete }: ReceiptRowProps) {
             {getReceiptReference(receipt.id, receipt.month)}
           </span>
         </p>
+        {getSendingStatusLines(receipt, now).map((line) => (
+          // Du texte, jamais de la seule couleur : l'état se lit (R28).
+          <p key={line} className="wrap-anywhere text-text-secondary">
+            {line}
+          </p>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-3 md:shrink-0">
@@ -97,6 +132,18 @@ function ReceiptRow({ receipt, canDelete }: ReceiptRowProps) {
         >
           Télécharger
         </a>
+        {/* Page d'envoi : un Link, elle ne fait que lire (R28 de la
+            spécification 05). Absent pendant un envoi et sur une location
+            archivée. */}
+        {sendingLink === null ? null : (
+          <Link
+            href={`/quittances/${receipt.id}/envoyer`}
+            aria-label={sendingLink.accessibleName}
+            className={SECONDARY_BUTTON_CLASSES}
+          >
+            {sendingLink.label}
+          </Link>
+        )}
         {/* Un lien vers la page de confirmation : l'afficher ou la précharger
             ne supprime rien, seul l'envoi de son formulaire le fait (R18). */}
         {canDelete ? (

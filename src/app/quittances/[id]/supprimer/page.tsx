@@ -9,6 +9,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { buildSignInPath, toSearchString } from "@/auth/return-path";
 import { DESTRUCTIVE_BUTTON_LARGE_CLASSES } from "@/components/button-styles";
+import { formatArchiveDate } from "@/rentals/rental-archive-text";
 
 import { ConfirmForm } from "../../../locations/[id]/confirm-form";
 import { readRentalAccess } from "../../../locations/rental-access";
@@ -96,6 +97,16 @@ export default async function DeleteReceiptPage({
           <p>Vous allez supprimer définitivement la quittance suivante.</p>
           {/* La page nomme ce qui va être supprimé, avec les valeurs figées. */}
           <ReceiptReminder receipt={receipt} />
+          {/* Quittance déjà envoyée (R13 de la spécification 05) : la trace
+              disparaît avec elle, le message reste chez le locataire. */}
+          {receipt.emailSentAt === null ? null : (
+            <p className="wrap-anywhere">
+              Cette quittance a été envoyée par e-mail à {receipt.emailSentTo}{" "}
+              le {formatArchiveDate(receipt.emailSentAt)}. La supprimer ici ne
+              la retire pas de la messagerie de votre locataire, et
+              l&apos;application n&apos;en gardera aucune trace.
+            </p>
+          )}
           <p className="text-text-secondary">
             Cette action est irréversible. Si vous avez déjà remis cette
             quittance à votre locataire, la supprimer ici ne la lui retire pas.
